@@ -1,7 +1,7 @@
 {
-  "name": "就業報告書 - 町田市シルバー人材センター",
-  "short_name": "就業報告書",
-  "description": "毎月の就業報告書作成アプリ",
+  "name": "蟆ｱ讌ｭ蝣ｱ蜻頑嶌 - 逕ｺ逕ｰ蟶ゅす繝ｫ繝舌�ｼ莠ｺ譚舌そ繝ｳ繧ｿ繝ｼ",
+  "short_name": "蟆ｱ讌ｭ蝣ｱ蜻頑嶌",
+  "description": "豈取怦縺ｮ蟆ｱ讌ｭ蝣ｱ蜻頑嶌菴懈�舌い繝励Μ",
   "start_url": "/Reports/index.html",
   "display": "standalone",
   "background_color": "#f0f9ff",
