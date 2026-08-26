@@ -1,18 +1,18 @@
 const CACHE_NAME = 'logical-quest-v1';
-// ƒLƒƒƒbƒVƒ…‚·‚éƒtƒ@ƒCƒ‹‚ÌƒŠƒXƒg
-// service-worker.jsƒtƒ@ƒCƒ‹‚©‚ç‚Ì‘Š‘ÎƒpƒX‚Åw’è
+// ã‚­ãƒ£ãƒƒã‚·ãƒ¥ã™ã‚‹ãƒ•ã‚¡ã‚¤ãƒ«ã®ãƒªã‚¹ãƒˆ
+// service-worker.jsãƒ•ã‚¡ã‚¤ãƒ«ã‹ã‚‰ã®ç›¸å¯¾ãƒ‘ã‚¹ã§æŒ‡å®š
 const urlsToCache = [
   './index.html'
-  // ƒAƒCƒRƒ“‚âCSS‚È‚Ç‚à•K—v‚É‰‚¶‚Ä’Ç‰Á
+  // ã‚¢ã‚¤ã‚³ãƒ³ã‚„CSSãªã©ã‚‚å¿…è¦ã«å¿œã˜ã¦è¿½åŠ 
 ];
 
-// 1. ƒCƒ“ƒXƒg[ƒ‹ƒCƒxƒ“ƒg (Service Worker“o˜^‚ÉÀs)
+// 1. ã‚¤ãƒ³ã‚¹ãƒˆãƒ¼ãƒ«ã‚¤ãƒ™ãƒ³ãƒˆ (Service Workerç™»éŒ²æ™‚ã«å®Ÿè¡Œ)
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
         console.log('Opened cache');
-        // w’è‚³‚ê‚½ƒtƒ@ƒCƒ‹‚ğ‚·‚×‚ÄƒLƒƒƒbƒVƒ…‚·‚é
+        // æŒ‡å®šã•ã‚ŒãŸãƒ•ã‚¡ã‚¤ãƒ«ã‚’ã™ã¹ã¦ã‚­ãƒ£ãƒƒã‚·ãƒ¥ã™ã‚‹
         return cache.addAll(urlsToCache);
       })
       .catch((error) => {
@@ -21,25 +21,25 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// 2. ƒtƒFƒbƒ`ƒCƒxƒ“ƒg (ƒŠƒNƒGƒXƒg‘—M‚ÉÀs) - ƒLƒƒƒbƒVƒ…ƒtƒ@[ƒXƒg
+// 2. ãƒ•ã‚§ãƒƒãƒã‚¤ãƒ™ãƒ³ãƒˆ (ãƒªã‚¯ã‚¨ã‚¹ãƒˆé€ä¿¡æ™‚ã«å®Ÿè¡Œ) - ã‚­ãƒ£ãƒƒã‚·ãƒ¥ãƒ•ã‚¡ãƒ¼ã‚¹ãƒˆ
 self.addEventListener('fetch', (event) => {
   event.respondWith(
     caches.match(event.request)
       .then((response) => {
-        // ƒLƒƒƒbƒVƒ…‚É‚ ‚ê‚Î‚»‚ê‚ğ•Ô‚µA‚È‚¯‚ê‚Îƒlƒbƒgƒ[ƒN‚©‚çæ“¾
+        // ã‚­ãƒ£ãƒƒã‚·ãƒ¥ã«ã‚ã‚Œã°ãã‚Œã‚’è¿”ã—ã€ãªã‘ã‚Œã°ãƒãƒƒãƒˆãƒ¯ãƒ¼ã‚¯ã‹ã‚‰å–å¾—
         return response || fetch(event.request);
       })
   );
 });
 
-// 3. ƒAƒNƒeƒBƒx[ƒgƒCƒxƒ“ƒg (Service Worker‚ª—LŒø‚É‚È‚Á‚½‚ÉÀs)
+// 3. ã‚¢ã‚¯ãƒ†ã‚£ãƒ™ãƒ¼ãƒˆã‚¤ãƒ™ãƒ³ãƒˆ (Service WorkerãŒæœ‰åŠ¹ã«ãªã£ãŸæ™‚ã«å®Ÿè¡Œ)
 self.addEventListener('activate', (event) => {
   const cacheWhitelist = [CACHE_NAME];
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
-          // CACHE_NAME (v1) ˆÈŠO‚ÌŒÃ‚¢ƒLƒƒƒbƒVƒ…(v0‚È‚Ç)‚ğíœ‚·‚é
+          // CACHE_NAME (v1) ä»¥å¤–ã®å¤ã„ã‚­ãƒ£ãƒƒã‚·ãƒ¥(v0ãªã©)ã‚’å‰Šé™¤ã™ã‚‹
           if (cacheWhitelist.indexOf(cacheName) === -1) {
             return caches.delete(cacheName);
           }
