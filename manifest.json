@@ -9,13 +9,13 @@
   "orientation": "any",
   "icons": [
     {
-      "src": "./Papirus-Team-Papirus-Apps-Pingus-icon-192.png",
+      "src": "./MSJ192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "./Papirus-Team-Papirus-Apps-Pingus-icon-512.png",
+      "src": "./MSJ512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
