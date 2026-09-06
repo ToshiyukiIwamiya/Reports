@@ -30,6 +30,11 @@
             .no-print {
                 display: none !important;
             }
+            .print-wrapper {
+                width: 100% !important;
+                overflow: visible !important;
+                padding: 0 !important;
+            }
             .print-container {
                 box-shadow: none !important;
                 margin: auto !important;
@@ -76,11 +81,6 @@
         }
         input[type=number] {
             -moz-appearance: textfield;
-        }
-        .table-container {
-            width: 100%;
-            overflow-x: auto; /* 横幅からはみ出したらスクロールさせる */
-            -webkit-overflow-scrolling: touch; /* スマホで滑らかにスクロールさせる */
         }
         .report-table {
             table-layout: fixed;
@@ -129,7 +129,9 @@
         </div>
     </div>
 
-    <div class="print-container max-w-[192mm] mx-auto bg-white p-[10mm] shadow-lg box-border text-black font-sans relative" style="min-height: 282mm;">
+    <!-- 横幅が狭い端末でもレイアウトが潰れないスクロールラッパー -->
+    <div class="w-full overflow-x-auto pb-6 print:pb-0 print-wrapper">
+    <div class="print-container max-w-[192mm] min-w-[700px] mx-auto bg-white p-[8mm] shadow-lg box-border text-black font-sans relative flex flex-col justify-between" style="min-height: 282mm;">
         
         <div class="flex justify-between items-end mb-2">
             <div class="flex items-center gap-3">
@@ -341,6 +343,7 @@
             </div>
         </div>
 
+    </div>
     </div>
 
     <script>
