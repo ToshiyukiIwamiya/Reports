@@ -134,14 +134,14 @@
             <div class="text-base font-medium tracking-widest flex items-center gap-2">
                 <div class="flex items-center gap-1">
                     <select id="report-format" onchange="updateCalendar()" class="print-select font-bold text-sm border-b border-black cursor-pointer bg-white">
-                        <option value="1">様式1（文字列・選択型）</option>
+                        <option value="1">様式1（文字列）</option>
                         <option value="2">様式2（数値）</option>
                         <option value="3" selected>様式3（時刻）</option>
                         <option value="4">様式4（4分割時刻）</option>
                     </select>
                 </div>
                 <div class="flex items-center gap-1">
-                    <select id="report-year" onchange="updateCalendar()" class="print-select text-center font-bold text-base w-16 border-b border-black cursor-pointer">
+                    <select id="report-year" onchange="updateCalendar()" class="print-select text-center font-bold text-base w-20 border-b border-black cursor-pointer">
                     </select> 年 
                     <select id="report-month" onchange="updateCalendar()" class="print-select text-center font-bold text-base w-12 border-b border-black cursor-pointer">
                     </select> 月
@@ -889,7 +889,7 @@
                     </th>
                     <th class="col-day">日</th>
                     <th class="col-wday">曜日</th>
-                    <th style="width: 32%;"><input type="text" id="f1-h2-1" class="text-center font-bold" value="摘要" oninput="handleTableHeaderInput(1, 1, this)"></th>
+                    <th style="width: 30%;"><input type="text" id="f1-h2-1" class="text-center font-bold" value="摘要" oninput="handleTableHeaderInput(1, 1, this)"></th>
                     <th class="col-eval">
                         <select id="f1-eval-type-17" class="print-select text-center font-bold text-xs bg-transparent cursor-pointer w-full" onchange="handleFormat1EvalTypeChange(this)">
                             <option value="日数" ${currentEvalType === '日数' ? 'selected' : ''}>日数</option>
@@ -904,13 +904,13 @@
                 headerRow.innerHTML = `
                     <th class="col-day">日</th>
                     <th class="col-wday">曜日</th>
-                    <th style="width: 16%;"><input type="text" id="f2-h1-col1" class="text-center font-bold" value="${currentName1}" oninput="handleFormat2HeaderInput(1, this)"></th>
-                    <th style="width: 16%;"><input type="text" id="f2-h1-col2" class="text-center font-bold" value="${currentName2}" oninput="handleFormat2HeaderInput(2, this)"></th>
+                    <th style="width: 15%;"><input type="text" id="f2-h1-col1" class="text-center font-bold" value="${currentName1}" oninput="handleFormat2HeaderInput(1, this)"></th>
+                    <th style="width: 15%;"><input type="text" id="f2-h1-col2" class="text-center font-bold" value="${currentName2}" oninput="handleFormat2HeaderInput(2, this)"></th>
                     <th class="col-eval"><input type="text" class="text-center font-bold" value="件数" readonly style="background:transparent;" tabindex="-1"></th>
                     <th class="col-day">日</th>
                     <th class="col-wday">曜日</th>
-                    <th style="width: 16%;"><input type="text" id="f2-h2-col1" class="text-center font-bold" value="${currentName1}" oninput="handleFormat2HeaderInput(1, this)"></th>
-                    <th style="width: 16%;"><input type="text" id="f2-h2-col2" class="text-center font-bold" value="${currentName2}" oninput="handleFormat2HeaderInput(2, this)"></th>
+                    <th style="width: 15%;"><input type="text" id="f2-h2-col1" class="text-center font-bold" value="${currentName1}" oninput="handleFormat2HeaderInput(1, this)"></th>
+                    <th style="width: 15%;"><input type="text" id="f2-h2-col2" class="text-center font-bold" value="${currentName2}" oninput="handleFormat2HeaderInput(2, this)"></th>
                     <th class="col-eval"><input type="text" class="text-center font-bold" value="件数" readonly style="background:transparent;" tabindex="-1"></th>
                 `;
             } else if (format === 3) {
@@ -918,8 +918,8 @@
                 headerRow.innerHTML = `
                     <th class="col-day">日</th>
                     <th class="col-wday">曜日</th>
-                    <th style="width: 16%;"><input type="text" class="text-center font-bold" value="開始時間" readonly style="background:transparent;" tabindex="-1"></th>
-                    <th style="width: 16%;"><input type="text" class="text-center font-bold" value="終了時間" readonly style="background:transparent;" tabindex="-1"></th>
+                    <th style="width: 15%;"><input type="text" class="text-center font-bold" value="開始時間" readonly style="background:transparent;" tabindex="-1"></th>
+                    <th style="width: 15%;"><input type="text" class="text-center font-bold" value="終了時間" readonly style="background:transparent;" tabindex="-1"></th>
                     <th class="col-eval">
                         <select id="f3-eval-type-1" class="print-select text-center font-bold text-xs bg-transparent cursor-pointer w-full" onchange="handleFormat3EvalTypeChange(this)">
                             <option value="時間" ${currentEvalType === '時間' ? 'selected' : ''}>時間</option>
@@ -928,8 +928,8 @@
                     </th>
                     <th class="col-day">日</th>
                     <th class="col-wday">曜日</th>
-                    <th style="width: 16%;"><input type="text" class="text-center font-bold" value="開始時間" readonly style="background:transparent;" tabindex="-1"></th>
-                    <th style="width: 16%;"><input type="text" class="text-center font-bold" value="終了時間" readonly style="background:transparent;" tabindex="-1"></th>
+                    <th style="width: 15%;"><input type="text" class="text-center font-bold" value="開始時間" readonly style="background:transparent;" tabindex="-1"></th>
+                    <th style="width: 15%;"><input type="text" class="text-center font-bold" value="終了時間" readonly style="background:transparent;" tabindex="-1"></th>
                     <th class="col-eval">
                         <select id="f3-eval-type-2" class="print-select text-center font-bold text-xs bg-transparent cursor-pointer w-full" onchange="handleFormat3EvalTypeChange(this)">
                             <option value="時間" ${currentEvalType === '時間' ? 'selected' : ''}>時間</option>
@@ -948,10 +948,10 @@
                 headerRow.innerHTML = `
                     <th class="col-day">日</th>
                     <th class="col-wday">曜日</th>
-                    <th style="width: 8%;"><input type="text" class="text-center font-bold" value="開始1" readonly style="background:transparent;" tabindex="-1"></th>
-                    <th style="width: 8%;"><input type="text" class="text-center font-bold" value="終了1" readonly style="background:transparent;" tabindex="-1"></th>
-                    <th style="width: 8%;"><input type="text" class="text-center font-bold" value="開始2" readonly style="background:transparent;" tabindex="-1"></th>
-                    <th style="width: 8%;"><input type="text" class="text-center font-bold" value="終了2" readonly style="background:transparent;" tabindex="-1"></th>
+                    <th style="width: 7.5%;"><input type="text" class="text-center font-bold" value="開始1" readonly style="background:transparent;" tabindex="-1"></th>
+                    <th style="width: 7.5%;"><input type="text" class="text-center font-bold" value="終了1" readonly style="background:transparent;" tabindex="-1"></th>
+                    <th style="width: 7.5%;"><input type="text" class="text-center font-bold" value="開始2" readonly style="background:transparent;" tabindex="-1"></th>
+                    <th style="width: 7.5%;"><input type="text" class="text-center font-bold" value="終了2" readonly style="background:transparent;" tabindex="-1"></th>
                     <th class="col-eval">
                         <select id="f4-eval-type-1" class="print-select text-center font-bold text-xs bg-transparent cursor-pointer w-full" onchange="handleFormat4EvalTypeChange(this)">
                             <option value="時間" ${currentEvalType === '時間' ? 'selected' : ''}>時間</option>
@@ -960,10 +960,10 @@
                     </th>
                     <th class="col-day">日</th>
                     <th class="col-wday">曜日</th>
-                    <th style="width: 8%;"><input type="text" class="text-center font-bold" value="開始1" readonly style="background:transparent;" tabindex="-1"></th>
-                    <th style="width: 8%;"><input type="text" class="text-center font-bold" value="終了1" readonly style="background:transparent;" tabindex="-1"></th>
-                    <th style="width: 8%;"><input type="text" class="text-center font-bold" value="開始2" readonly style="background:transparent;" tabindex="-1"></th>
-                    <th style="width: 8%;"><input type="text" class="text-center font-bold" value="終了2" readonly style="background:transparent;" tabindex="-1"></th>
+                    <th style="width: 7.5%;"><input type="text" class="text-center font-bold" value="開始1" readonly style="background:transparent;" tabindex="-1"></th>
+                    <th style="width: 7.5%;"><input type="text" class="text-center font-bold" value="終了1" readonly style="background:transparent;" tabindex="-1"></th>
+                    <th style="width: 7.5%;"><input type="text" class="text-center font-bold" value="開始2" readonly style="background:transparent;" tabindex="-1"></th>
+                    <th style="width: 7.5%;"><input type="text" class="text-center font-bold" value="終了2" readonly style="background:transparent;" tabindex="-1"></th>
                     <th class="col-eval">
                         <select id="f4-eval-type-2" class="print-select text-center font-bold text-xs bg-transparent cursor-pointer w-full" onchange="handleFormat4EvalTypeChange(this)">
                             <option value="時間" ${currentEvalType === '時間' ? 'selected' : ''}>時間</option>
