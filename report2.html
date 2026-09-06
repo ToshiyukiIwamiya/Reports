@@ -12,19 +12,36 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @media print {
+            @page {
+                size: A4 portrait;
+                margin: 0;
+            }
             body {
                 background: white;
                 margin: 0;
                 padding: 0;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                min-height: 100vh;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
             }
             .no-print {
                 display: none !important;
             }
             .print-container {
                 box-shadow: none !important;
-                margin: 0 !important;
-                width: 100% !important;
-                max-width: 100% !important;
+                margin: auto !important;
+                width: 192mm !important;
+                max-width: 192mm !important;
+                height: 282mm !important;
+                max-height: 282mm !important;
+                padding: 6mm 7mm !important;
+                box-sizing: border-box !important;
+                overflow: hidden !important;
+                page-break-after: avoid !important;
+                page-break-inside: avoid !important;
             }
             select.print-select {
                 -webkit-appearance: none;
@@ -33,6 +50,10 @@
                 background: transparent;
                 border: none;
                 text-align-last: center;
+            }
+            .report-table th, .report-table td {
+                height: 24px !important;
+                font-size: 12px !important;
             }
         }
         input, textarea, select {
@@ -63,8 +84,8 @@
         .report-table th, .report-table td {
             border: 1px solid #000;
             padding: 1px 2px;
-            font-size: 11px;
-            height: 24px;
+            font-size: 12px;
+            height: 28px;
             vertical-align: middle;
             overflow: hidden;
             white-space: nowrap;
@@ -103,7 +124,7 @@
         </div>
     </div>
 
-    <div class="print-container max-w-[210mm] mx-auto bg-white p-[10mm] shadow-lg box-border text-black font-sans relative" style="min-height: 297mm;">
+    <div class="print-container max-w-[192mm] mx-auto bg-white p-[10mm] shadow-lg box-border text-black font-sans relative" style="min-height: 282mm;">
         
         <div class="flex justify-between items-end mb-2">
             <div class="flex items-center gap-3">
@@ -129,8 +150,8 @@
         </div>
 
         <div class="grid grid-cols-2 gap-2 mb-2">
-            <div class="main-border flex flex-col h-40">
-                <div class="bg-slate-100 border-b border-black px-2 py-0.5 text-[11px] font-bold">
+            <div class="main-border flex flex-col h-36 print:h-32">
+                <div class="bg-slate-100 border-b border-black px-2 py-0.5 text-[12px] font-bold">
                     【仕事の内容／連絡事項／申し送り事項】
                 </div>
                 <div class="flex-grow p-1">
@@ -138,7 +159,7 @@
                 </div>
             </div>
 
-            <div class="main-border flex flex-col justify-between p-1 text-xs space-y-0 h-40">
+            <div class="main-border flex flex-col justify-between p-1 text-xs space-y-0 h-36 print:h-32">
                 <div class="flex items-center border-b border-gray-300 pb-0.5">
                     <span class="w-20 font-bold shrink-0">契約件名：</span>
                     <input type="text" class="flex-grow font-medium min-w-0 py-0 text-xs" placeholder="">
@@ -173,10 +194,10 @@
             </tbody>
         </table>
 
-        <div class="grid grid-cols-2 gap-2">
+        <div class="grid grid-cols-2 gap-2.5">
             <div class="flex flex-col justify-between">
-                <div class="main-border h-56 flex flex-col mb-2">
-                    <div class="bg-slate-100 border-b border-black px-2 py-0.5 text-[11px] font-bold">
+                <div class="main-border h-48 print:h-44 flex flex-col mb-1.5">
+                    <div class="bg-slate-100 border-b border-black px-2 py-0.5 text-[12px] font-bold">
                         【事務局記入欄】
                     </div>
                     <div class="flex-grow p-1">
@@ -184,7 +205,7 @@
                     </div>
                 </div>
 
-                <div class="text-center border border-black p-1.5 bg-slate-50 text-[11px] leading-tight">
+                <div class="text-center border border-black p-1.5 bg-slate-50 text-[12px] leading-tight">
                     <div class="font-bold text-xs">公益社団法人 町田市シルバー人材センター</div>
                     <div>〒194-0022 町田市森野1-1-15</div>
                     <div>電話 042-723-2147　FAX 042-724-0407</div>
@@ -195,23 +216,23 @@
 
             <div class="flex flex-col justify-between">
                 <div class="border border-black p-1.5 text-[11px] flex justify-between items-center mb-1">
-                    <span class="leading-tight text-[10px]">貴センターに発注した仕事が<br>履行されたことを確認いたします。</span>
+                    <span class="leading-tight text-[14px]">貴センターに発注した仕事が<br>履行されたことを確認いたします。</span>
                     <div class="border border-black w-24 h-16 flex items-center justify-center text-center text-gray-400 text-xs bg-white shrink-0">
                         印またはサイン
                     </div>
                 </div>
 
-                <div class="main-border p-2 text-xs space-y-1.5 bg-white">
-                    <div class="font-bold text-[11px] border-b border-black pb-0.5 mb-1">配分金</div>
+                <div class="main-border p-1.5 text-xs space-y-1 print:space-y-0.5 bg-white">
+                    <div class="font-bold text-[12px] border-b border-black pb-0.5 mb-0.5">配分金</div>
                     
                     <div class="flex items-center justify-between">
                         <input type="text" id="item-name-1" maxlength="10" class="border-b border-gray-400 w-24 text-left shrink font-medium text-xs" value="時間" placeholder="項目名(10文字)" oninput="syncAllocationNames()">
                         <div class="flex items-center gap-1">
-                            <input type="text" id="p1-price" class="border-b border-gray-400 w-12 text-right shrink calc-source text-xs" placeholder="0" oninput="formatAndCalcFinancials(this)" onblur="formatInput(this)">
+                            <input type="text" id="p1-price" class="border-b border-gray-400 w-10 text-right shrink calc-source text-xs" placeholder="0" oninput="formatAndCalcFinancials(this)" onblur="formatInput(this)">
                             <span class="shrink-0 text-xs">円×</span>
-                            <input type="text" id="p1-count" class="border-b border-gray-400 w-12 text-right shrink calc-source text-xs bg-slate-50 font-bold" readonly placeholder="0" title="評価合計と連動">
+                            <input type="text" id="p1-count" class="border-b border-gray-400 w-10 text-right shrink calc-source text-xs bg-slate-50 font-bold" readonly placeholder="0" title="評価合計と連動">
                             <span class="shrink-0 text-xs">＝</span>
-                            <input type="text" id="p1-total" class="border-b border-gray-400 w-16 text-right font-medium shrink calc-total text-xs" readonly placeholder="0">
+                            <input type="text" id="p1-total" class="border-b border-gray-400 w-14 text-right font-medium shrink calc-total text-xs" readonly placeholder="0">
                             <span class="shrink-0 text-xs w-4 text-left">円</span>
                         </div>
                     </div>
@@ -219,11 +240,11 @@
                     <div class="flex items-center justify-between" id="row-allocation-2">
                         <input type="text" id="item-name-2" maxlength="10" class="border-b border-gray-400 w-24 text-left shrink font-medium text-xs" value="数値2" placeholder="項目名(10文字)" oninput="syncAllocationNames()">
                         <div class="flex items-center gap-1">
-                            <input type="text" id="p2-price" class="border-b border-gray-400 w-12 text-right shrink calc-source text-xs" placeholder="0" oninput="formatAndCalcFinancials(this)" onblur="formatInput(this)">
+                            <input type="text" id="p2-price" class="border-b border-gray-400 w-10 text-right shrink calc-source text-xs" placeholder="0" oninput="formatAndCalcFinancials(this)" onblur="formatInput(this)">
                             <span class="shrink-0 text-xs">円×</span>
-                            <input type="text" id="p2-count" class="border-b border-gray-400 w-12 text-right shrink calc-source text-xs bg-slate-50 font-bold" readonly placeholder="0" title="様式2の数値2合計と連動">
+                            <input type="text" id="p2-count" class="border-b border-gray-400 w-10 text-right shrink calc-source text-xs bg-slate-50 font-bold" readonly placeholder="0" title="様式2の数値2合計と連動">
                             <span class="shrink-0 text-xs">＝</span>
-                            <input type="text" id="p2-total" class="border-b border-gray-400 w-16 text-right font-medium shrink calc-total text-xs" readonly placeholder="0">
+                            <input type="text" id="p2-total" class="border-b border-gray-400 w-14 text-right font-medium shrink calc-total text-xs" readonly placeholder="0">
                             <span class="shrink-0 text-xs w-4 text-left">円</span>
                         </div>
                     </div>
@@ -231,11 +252,11 @@
                     <div class="flex items-center justify-between">
                         <input type="text" maxlength="10" class="border-b border-gray-400 w-24 text-left shrink font-medium text-xs" value="交通費等" placeholder="項目名(10文字)">
                         <div class="flex items-center gap-1">
-                            <input type="text" id="p3-price" class="border-b border-gray-400 w-12 text-right shrink calc-source text-xs" placeholder="0" oninput="formatAndCalcFinancials(this)" onblur="formatInput(this)">
+                            <input type="text" id="p3-price" class="border-b border-gray-400 w-10 text-right shrink calc-source text-xs" placeholder="0" oninput="formatAndCalcFinancials(this)" onblur="formatInput(this)">
                             <span class="shrink-0 text-xs">円×</span>
-                            <input type="text" id="p3-count" class="border-b border-gray-400 w-12 text-right shrink calc-source text-xs" placeholder="0" oninput="formatAndCalcFinancials(this)" onblur="formatInput(this)">
+                            <input type="text" id="p3-count" class="border-b border-gray-400 w-10 text-right shrink calc-source text-xs" placeholder="0" oninput="formatAndCalcFinancials(this)" onblur="formatInput(this)">
                             <span class="shrink-0 text-xs">＝</span>
-                            <input type="text" id="p3-total" class="border-b border-gray-400 w-16 text-right font-medium shrink calc-total text-xs" readonly placeholder="0">
+                            <input type="text" id="p3-total" class="border-b border-gray-400 w-14 text-right font-medium shrink calc-total text-xs" readonly placeholder="0">
                             <span class="shrink-0 text-xs w-4 text-left">円</span>
                         </div>
                     </div>
