@@ -1,0 +1,1044 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="manifest" href="manifest.json">
+  　<link rel="apple-touch-icon" href="MSJ192.png">
+  　<meta name="apple-mobile-web-app-capable" content="yes">
+  　<meta name="apple-mobile-web-app-status-bar-style" content="default">
+  　<meta name="apple-mobile-web-app-title" content="就業報告書">
+    <title>就業報告書 入力システム</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- html2pdf.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        @media print {
+            body {
+                background: white !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                -webkit-print-color-adjust: exact;
+            }
+            .no-print {
+                display: none !important;
+            }
+            .print-container {
+                box-shadow: none !important;
+                margin: 0 !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                padding: 5mm !important;
+            }
+            select.print-select, input, textarea {
+                -webkit-appearance: none;
+                -moz-appearance: none;
+                appearance: none;
+                background: transparent;
+                border: none;
+            }
+            input:disabled, select:disabled {
+                background-color: #f1f5f9 !important;
+                color: #64748b !important;
+            }
+        }
+        input, textarea, select {
+            background-color: transparent;
+            border: none;
+            outline: none;
+            width: 100%;
+            height: 100%;
+            padding: 1px 2px;
+            font-size: 11px;
+        }
+        input:focus, textarea:focus, select:focus {
+            background-color: rgba(59, 130, 246, 0.05);
+            box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.5);
+        }
+        input:disabled, select:disabled {
+            background-color: #e2e8f0;
+            color: #94a3b8;
+        }
+        .report-table th, .report-table td {
+            border: 1px solid #000;
+            padding: 0px 2px;
+            font-size: 11px;
+            height: 22px;
+            vertical-align: middle;
+        }
+        .main-border {
+            border: 2px solid #000;
+        }
+        /* Editable headers styling */
+        [contenteditable="true"]:hover {
+            background-color: rgba(59, 130, 246, 0.1);
+            outline: 1px dashed #3b82f6;
+        }
+        [contenteditable="false"] {
+            cursor: default;
+        }
+    </style>
+</head>
+<body class="bg-slate-200 min-h-screen py-4 print:py-0 flex flex-col items-center" onload="initSystem()">
+
+    <!-- 操作パネル（印刷時は非表示） -->
+    <div class="max-w-[210mm] w-full mx-auto mb-3 px-2 flex flex-wrap justify-between items-center gap-2 no-print bg-white p-3 rounded-lg shadow-md">
+        <div class="flex items-center gap-2">
+            <h1 class="text-sm font-bold text-slate-800">就業報告書システム</h1>
+            <span id="save-status" class="text-xs text-slate-500 font-medium">（変更なし）</span>
+        </div>
+        
+        <div class="flex flex-wrap items-center gap-2">
+            <!-- 音声入力ボタン -->
+            <button id="voice-btn" onclick="toggleVoiceInput()" class="bg-amber-500 hover:bg-amber-600 text-white font-medium px-3 py-1.5 rounded shadow transition text-xs flex items-center gap-1">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v1a7 7 0 0 1-14 0v-1"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+                <span id="voice-btn-text">音声入力</span>
+            </button>
+
+            <!-- ファイル読込・保存 -->
+            <label class="bg-slate-700 hover:bg-slate-800 text-white font-medium px-2.5 py-1.5 rounded shadow transition text-xs cursor-pointer">
+                JSON読込
+                <input type="file" id="import-file" accept=".json" onchange="importJSON(event)" class="hidden">
+            </label>
+            <button onclick="exportJSON()" class="bg-slate-700 hover:bg-slate-800 text-white font-medium px-2.5 py-1.5 rounded shadow transition text-xs">
+                JSON保存
+            </button>
+
+            <!-- クリア・印刷・PDF保存 -->
+            <button onclick="clearData()" class="bg-rose-100 hover:bg-rose-200 text-rose-700 font-medium px-2.5 py-1.5 rounded shadow transition text-xs">
+                初期化
+            </button>
+            <button onclick="window.print()" class="bg-blue-600 hover:bg-blue-700 text-white font-medium px-3 py-1.5 rounded shadow transition text-xs">
+                印刷
+            </button>
+            <button onclick="exportPDF()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-3 py-1.5 rounded shadow transition text-xs">
+                PDF保存
+            </button>
+
+            <!-- メール送信ボタン（PDF保存の右に配置） -->
+            <button onclick="sendByEmail()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-3 py-1.5 rounded shadow transition text-xs flex items-center gap-1">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+                メール送信
+            </button>
+        </div>
+    </div>
+
+    <!-- 音声認識中の通知バナー -->
+    <div id="voice-banner" class="max-w-[210mm] w-full mx-auto mb-2 hidden no-print">
+        <div class="bg-amber-50 border border-amber-300 text-amber-800 px-4 py-2 rounded-lg text-xs flex items-center justify-between shadow-sm animate-pulse">
+            <div class="flex items-center gap-2">
+                <span class="w-3 h-3 rounded-full bg-red-500 inline-block animate-ping"></span>
+                <span id="voice-status-text" class="font-bold">音声認識中... 話しかけてください（例：「9時 17時」「15日 9時 17時」「作業内容を音声で」）</span>
+            </div>
+            <button onclick="stopVoiceInput()" class="text-xs bg-amber-200 hover:bg-amber-300 px-2 py-1 rounded font-bold text-amber-900">停止</button>
+        </div>
+    </div>
+
+    <!-- A4用紙コンテナ -->
+    <div id="pdf-container" class="print-container max-w-[210mm] w-full mx-auto bg-white p-[8mm] shadow-xl box-border text-black font-sans relative" style="min-height: 297mm;">
+        
+        <!-- ヘッダー部分 -->
+        <div class="flex justify-between items-center mb-1.5">
+            <div class="flex items-center gap-2">
+                <h2 class="text-xl font-black tracking-wider border-2 border-black px-2.5 py-0.5">就業報告書</h2>
+                <span class="bg-black text-white font-bold px-2 py-0.5 text-xs tracking-widest">提出用</span>
+                <!-- ロックチェックボックスを就業報告書の右側に配置 -->
+                <label class="flex items-center gap-1 text-[11px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded border border-slate-300 cursor-pointer hover:bg-slate-200 transition ml-2 no-print">
+                    <input type="checkbox" id="lock-checkbox" onchange="toggleLockState()" class="w-3 h-3 text-blue-600 rounded">
+                    会員用に項目名と単位をロックする
+                </label>
+            </div>
+            <div class="text-base font-medium tracking-widest flex items-center gap-1 whitespace-nowrap">
+                <select id="report-year" onchange="onDateChange(); scheduleAutoSave();" class="print-select text-center font-bold text-base w-18 border-b border-black cursor-pointer">
+                    <!-- 動的生成 -->
+                </select> 年 
+                <select id="report-month" onchange="onDateChange(); scheduleAutoSave();" class="print-select text-center font-bold text-base w-12 border-b border-black cursor-pointer">
+                    <!-- 動的生成 -->
+                </select> 月分
+            </div>
+        </div>
+
+        <!-- 上部メイングリッド -->
+        <div class="grid grid-cols-2 gap-2 mb-1.5">
+            <!-- 左側：仕事の内容・連絡事項等 -->
+            <div class="main-border flex flex-col" style="height: 145px;">
+                <div class="bg-slate-100 border-b border-black px-2 py-0.5 text-[11px] font-bold">
+                    【仕事の内容／連絡事項／申し送り事項】
+                </div>
+                <div class="flex-grow p-1">
+                    <textarea id="work-content" oninput="scheduleAutoSave()" class="resize-none" lang="ja" placeholder="ここに仕事の内容や連絡事項を入力してください"></textarea>
+                </div>
+            </div>
+
+            <!-- 右側：契約情報 -->
+            <div class="main-border flex flex-col justify-between p-1.5 text-xs space-y-0.5" style="height: 145px;">
+                <div class="flex items-center border-b border-gray-300 pb-0.5">
+                    <span class="w-20 font-bold shrink-0 text-[11px]">契約件名：</span>
+                    <input type="text" id="contract-title" oninput="scheduleAutoSave()" lang="ja" class="flex-grow font-medium min-w-0" placeholder="">
+                    <span class="font-bold shrink-0 ml-1 text-[11px]">業務委託</span>
+                </div>
+                <div class="flex items-center border-b border-gray-300 pb-0.5">
+                    <span class="w-20 font-bold shrink-0 text-[11px]">契約番号：</span>
+                    <input type="text" id="contract-no" oninput="scheduleAutoSave()" inputmode="latin" style="ime-mode: disabled;" class="flex-grow min-w-0" placeholder="">
+                </div>
+                <div class="flex items-center border-b border-gray-300 pb-0.5">
+                    <span class="w-20 font-bold shrink-0 text-[11px]">発注者名：</span>
+                    <input type="text" id="client-name" oninput="scheduleAutoSave()" lang="ja" class="flex-grow font-medium min-w-0" placeholder="">
+                    <span class="font-bold ml-1 shrink-0 text-[11px]">様</span>
+                </div>
+                <div class="flex items-center border-b border-gray-300 pb-0.5">
+                    <span class="w-20 font-bold shrink-0 text-[11px]">会員番号：</span>
+                    <input type="text" id="member-no" oninput="scheduleAutoSave()" inputmode="latin" style="ime-mode: disabled;" class="flex-grow min-w-0" placeholder="">
+                </div>
+                <div class="flex items-center">
+                    <span class="w-20 font-bold shrink-0 text-[11px]">会員氏名：</span>
+                    <input type="text" id="member-name" oninput="scheduleAutoSave()" lang="ja" class="flex-grow font-medium min-w-0" placeholder="">
+                </div>
+            </div>
+        </div>
+
+        <!-- 日別実績テーブル（1〜31日） -->
+        <table class="w-full report-table border-collapse mb-1.5">
+            <thead>
+                <tr class="bg-slate-100 text-center font-bold">
+                    <th class="w-6">日</th>
+                    <th class="w-7">曜日</th>
+                    <th id="th-item-a" contenteditable="true" onblur="scheduleAutoSave()" style="width: auto;">開始時刻</th>
+                    <th id="th-item-b" contenteditable="true" onblur="scheduleAutoSave()" style="width: auto;">終了時刻</th>
+                    <th id="th-item-c" contenteditable="true" onblur="scheduleAutoSave()" style="width: 32px;">時間</th>
+                    <th class="w-6">日</th>
+                    <th class="w-7">曜日</th>
+                    <th id="th-item-d" contenteditable="true" onblur="scheduleAutoSave()" style="width: auto;">開始時刻</th>
+                    <th id="th-item-e" contenteditable="true" onblur="scheduleAutoSave()" style="width: auto;">終了時刻</th>
+                    <th id="th-item-f" contenteditable="true" onblur="scheduleAutoSave()" style="width: 32px;">時間</th>
+                </tr>
+            </thead>
+            <tbody id="calendar-body">
+                <!-- 動的生成 -->
+            </tbody>
+        </table>
+
+        <!-- 合計および事務局記入欄等の下部エリア -->
+        <div class="grid grid-cols-2 gap-2">
+            <!-- 左側：事務局記入欄 & フッター機関情報 -->
+            <div class="flex flex-col justify-between">
+                <!-- 事務局記入欄 -->
+                <div class="main-border flex flex-col mb-1.5" style="height: 190px;">
+                    <div class="bg-slate-100 border-b border-black px-2 py-0.5 text-[11px] font-bold">
+                        【事務局記入欄】
+                    </div>
+                    <div class="flex-grow p-1">
+                        <textarea id="office-notes" oninput="scheduleAutoSave()" class="resize-none" lang="ja" placeholder=""></textarea>
+                    </div>
+                </div>
+
+                <!-- 組織情報 -->
+                <div class="text-center border border-black p-1.5 bg-slate-50 text-[10px] leading-tight">
+                    <div class="font-bold text-[11px]">公益社団法人 町田市シルバー人材センター</div>
+                    <div>〒194-0022 町田市森野1-1-15</div>
+                    <div>電話 042-723-2147　FAX 042-724-0407</div>
+                    <div class="font-medium text-slate-700 mt-0.5">提出専用メールアドレス</div>
+                    <div class="text-blue-600 underline">houkoku@machida-sjc.or.jp</div>
+                </div>
+            </div>
+
+            <!-- 右側：確認・配分金内訳 -->
+            <div class="flex flex-col justify-between">
+                <div class="border border-black p-1.5 text-[11px] flex justify-between items-center mb-1">
+                    <span class="leading-tight text-[10px]">貴センターに発注した仕事が<br>履行されたことを確認いたします。</span>
+                    <div class="border border-black w-20 h-14 flex items-center justify-center text-center text-gray-400 text-[11px] bg-white shrink-0">
+                        印またはサイン
+                    </div>
+                </div>
+
+                <!-- 配分金計算テーブル（自動計算付き） -->
+                <div class="main-border p-1 text-xs space-y-0.5 bg-white">
+                    <div class="font-bold text-[11px] border-b border-black pb-0.5 mb-0.5 flex justify-between items-center">
+                        <span>配分金</span>
+                        <span class="text-[10px] text-slate-500 font-normal">※単位は自由入力・選択可</span>
+                    </div>
+
+                    <!-- 項目1 -->
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-0.5 w-full whitespace-nowrap text-[10px]">
+                            <input type="text" id="calc1_name" oninput="scheduleAutoSave()" class="border-b border-gray-400 w-28 text-left shrink font-medium text-[10px]" placeholder="項目名（15文字まで）">
+                            <input type="text" id="calc1_unit" list="units-datalist" oninput="scheduleAutoSave()" class="border-b border-gray-400 w-12 text-center shrink font-medium text-[10px]" placeholder="単位">
+                            <input type="text" id="calc1_val1" oninput="calculateTotal(); scheduleAutoSave();" class="border-b border-gray-400 w-9 text-right shrink text-[10px]" placeholder="0">
+                            <span class="shrink-0 text-[10px]">×</span>
+                            <input type="text" id="calc1_val2" oninput="calculateTotal(); scheduleAutoSave();" class="border-b border-gray-400 w-7 text-right shrink text-[10px]" placeholder="0">
+                            <span class="shrink-0 text-[10px]">＝</span>
+                            <input type="text" id="calc1_res" readonly class="border-b border-gray-400 w-12 text-right font-medium shrink text-[10px] bg-slate-50" placeholder="0">
+                            <span class="shrink-0 text-[10px]">円</span>
+                        </div>
+                    </div>
+
+                    <!-- 項目2 -->
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-0.5 w-full whitespace-nowrap text-[10px]">
+                            <input type="text" id="calc2_name" oninput="scheduleAutoSave()" class="border-b border-gray-400 w-28 text-left shrink font-medium text-[10px]" placeholder="項目名（15文字まで）">
+                            <input type="text" id="calc2_unit" list="units-datalist" oninput="scheduleAutoSave()" class="border-b border-gray-400 w-12 text-center shrink font-medium text-[10px]" placeholder="単位">
+                            <input type="text" id="calc2_val1" oninput="calculateTotal(); scheduleAutoSave();" class="border-b border-gray-400 w-9 text-right shrink text-[10px]" placeholder="0">
+                            <span class="shrink-0 text-[10px]">×</span>
+                            <input type="text" id="calc2_val2" oninput="calculateTotal(); scheduleAutoSave();" class="border-b border-gray-400 w-7 text-right shrink text-[10px]" placeholder="0">
+                            <span class="shrink-0 text-[10px]">＝</span>
+                            <input type="text" id="calc2_res" readonly class="border-b border-gray-400 w-12 text-right font-medium shrink text-[10px] bg-slate-50" placeholder="0">
+                            <span class="shrink-0 text-[10px]">円</span>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between text-[11px]">
+                        <span>交通費等</span>
+                        <div class="flex items-center"><input type="text" id="val_travel" oninput="calculateTotal(); scheduleAutoSave();" class="border-b border-gray-400 w-24 text-right text-[11px]" placeholder="0"><span>円</span></div>
+                    </div>
+                    <div class="flex items-center justify-between text-[11px]">
+                        <span>控　　除</span>
+                        <div class="flex items-center"><input type="text" id="val_deduction" oninput="calculateTotal(); scheduleAutoSave();" class="border-b border-gray-400 w-24 text-right text-[11px]" placeholder="0"><span>円</span></div>
+                    </div>
+                    <div class="flex items-center justify-between text-[11px]">
+                        <span>立替材料費</span>
+                        <div class="flex items-center"><input type="text" id="val_advance" oninput="calculateTotal(); scheduleAutoSave();" class="border-b border-gray-400 w-24 text-right text-[11px]" placeholder="0"><span>円</span></div>
+                    </div>
+                    <div class="flex items-center justify-between font-bold border-t border-black pt-0.5 text-[11px]">
+                        <span>配分金合計</span>
+                        <div class="flex items-center"><input type="text" id="val_subtotal" readonly class="border-b border-black w-24 text-right font-bold text-[11px] bg-slate-50" placeholder="0"><span>円</span></div>
+                    </div>
+                    <div class="flex items-center justify-between text-[11px]">
+                        <span>材料費</span>
+                        <div class="flex items-center"><input type="text" id="val_material" oninput="calculateTotal(); scheduleAutoSave();" class="border-b border-gray-400 w-24 text-right text-[11px]" placeholder="0"><span>円</span></div>
+                    </div>
+                    <div class="flex items-center justify-between text-[11px]">
+                        <span>事務費</span>
+                        <div class="flex items-center"><input type="text" id="val_admin" oninput="calculateTotal(); scheduleAutoSave();" class="border-b border-gray-400 w-24 text-right text-[11px]" placeholder="0"><span>円</span></div>
+                    </div>
+                    <div class="flex items-center justify-between font-black text-xs border-t-2 border-black pt-0.5">
+                        <span>合計</span>
+                        <div class="flex items-center"><input type="text" id="val_total" readonly class="border-b-2 border-black w-28 text-right font-black text-xs bg-slate-50" placeholder="0"><span>円</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Datalist for Units -->
+    <datalist id="units-datalist">
+        <option value="時間">
+        <option value="単位">
+        <option value="回数">
+        <option value="出来高">
+        <option value="日">
+        <option value="件">
+        <option value="個">
+    </datalist>
+
+    <script>
+        const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
+        let saveTimeout = null;
+        let activeInputEl = null; // 音声入力用にアクティブな要素を追跡
+        let recognition = null;
+        let isRecording = false;
+
+        function initSystem() {
+            const yearSelect = document.getElementById('report-year');
+            const monthSelect = document.getElementById('report-month');
+            
+            // 年選択肢 (2022〜2032)
+            for (let y = 2022; y <= 2032; y++) {
+                const opt = document.createElement('option');
+                opt.value = y;
+                opt.textContent = y;
+                if (y === 2026) opt.selected = true;
+                yearSelect.appendChild(opt);
+            }
+
+            // 月選択肢 (1〜12)
+            for (let m = 1; m <= 12; m++) {
+                const opt = document.createElement('option');
+                opt.value = m;
+                opt.textContent = m;
+                if (m === 9) opt.selected = true;
+                monthSelect.appendChild(opt);
+            }
+
+            // アクティブ要素のトラッキング
+            document.addEventListener('focusin', (e) => {
+                if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+                    activeInputEl = e.target;
+                }
+            });
+
+            // LocalStorageから読み込み、なければデフォルトカレンダー生成
+            if (!loadFromLocalStorage()) {
+                buildCalendar();
+            }
+            calculateTotal();
+            setupVoiceRecognition();
+        }
+
+        function onDateChange() {
+            buildCalendar();
+            calculateTotal();
+        }
+
+        // カレンダー表の構築
+        function buildCalendar(savedData = null) {
+            const year = parseInt(document.getElementById('report-year').value);
+            const month = parseInt(document.getElementById('report-month').value);
+            const tbody = document.getElementById('calendar-body');
+            tbody.innerHTML = '';
+
+            const daysInMonth = new Date(year, month, 0).getDate();
+
+            for (let i = 1; i <= 15; i++) {
+                const i2 = i + 16;
+                const d1 = i;
+                const isValid1 = d1 <= daysInMonth;
+                const w1 = isValid1 ? weekdays[new Date(year, month - 1, d1).getDay()] : '';
+                
+                const d2 = i2 <= daysInMonth ? i2 : null;
+                const isValid2 = d2 !== null;
+                const w2 = isValid2 ? weekdays[new Date(year, month - 1, d2).getDay()] : '';
+
+                // 保存データから行データを取得
+                const row1Data = savedData && savedData.rows ? savedData.rows.find(r => r.day === d1) : null;
+                const row2Data = savedData && savedData.rows ? savedData.rows.find(r => r.day === d2) : null;
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="text-center font-bold bg-slate-50">${isValid1 ? d1 : ''}</td>
+                    <td class="text-center"><input type="text" class="text-center" value="${w1}" ${!isValid1 ? 'readonly style="background:transparent;"' : ''}></td>
+                    <td class="p-0"><input type="text" id="start_${d1}" value="${row1Data ? row1Data.start : ''}" class="text-center time-input" inputmode="latin" placeholder="" ${!isValid1 ? 'disabled' : ''} onblur="onTimeBlur(${d1})" oninput="scheduleAutoSave()"></td>
+                    <td class="p-0"><input type="text" id="end_${d1}" value="${row1Data ? row1Data.end : ''}" class="text-center time-input" inputmode="latin" placeholder="" ${!isValid1 ? 'disabled' : ''} onblur="onTimeBlur(${d1})" oninput="scheduleAutoSave()"></td>
+                    <td class="p-0"><input type="text" id="dur_${d1}" value="${row1Data ? row1Data.dur : ''}" class="text-center bg-slate-50 dur-input" readonly placeholder="" ${!isValid1 ? 'disabled' : ''}></td>
+                    
+                    <td class="text-center font-bold bg-slate-50">${isValid2 ? d2 : ''}</td>
+                    <td class="text-center"><input type="text" class="text-center" value="${w2}" ${!isValid2 ? 'readonly style="background:transparent;"' : ''}></td>
+                    <td class="p-0"><input type="text" id="start_${d2 || ''}" value="${row2Data ? row2Data.start : ''}" class="text-center time-input" inputmode="latin" placeholder="" ${!isValid2 ? 'disabled' : ''} onblur="onTimeBlur(${d2})" oninput="scheduleAutoSave()"></td>
+                    <td class="p-0"><input type="text" id="end_${d2 || ''}" value="${row2Data ? row2Data.end : ''}" class="text-center time-input" inputmode="latin" placeholder="" ${!isValid2 ? 'disabled' : ''} onblur="onTimeBlur(${d2})" oninput="scheduleAutoSave()"></td>
+                    <td class="p-0"><input type="text" id="dur_${d2 || ''}" value="${row2Data ? row2Data.dur : ''}" class="text-center bg-slate-50 dur-input" readonly placeholder="" ${!isValid2 ? 'disabled' : ''}></td>
+                `;
+                tbody.appendChild(tr);
+            }
+
+            // 16日目と合計欄の行
+            const d1_16 = 16;
+            const isValid1_16 = d1_16 <= daysInMonth;
+            const w1_16 = isValid1_16 ? weekdays[new Date(year, month - 1, d1_16).getDay()] : '';
+            const row16Data = savedData && savedData.rows ? savedData.rows.find(r => r.day === d1_16) : null;
+
+            const tr16 = document.createElement('tr');
+            tr16.innerHTML = `
+                <td class="text-center font-bold bg-slate-50">${isValid1_16 ? d1_16 : ''}</td>
+                <td class="text-center"><input type="text" class="text-center" value="${w1_16}" ${!isValid1_16 ? 'readonly style="background:transparent;"' : ''}></td>
+                <td class="p-0"><input type="text" id="start_${d1_16}" value="${row16Data ? row16Data.start : ''}" class="text-center time-input" inputmode="latin" placeholder="" ${!isValid1_16 ? 'disabled' : ''} onblur="onTimeBlur(${d1_16})" oninput="scheduleAutoSave()"></td>
+                <td class="p-0"><input type="text" id="end_${d1_16}" value="${row16Data ? row16Data.end : ''}" class="text-center time-input" inputmode="latin" placeholder="" ${!isValid1_16 ? 'disabled' : ''} onblur="onTimeBlur(${d1_16})" oninput="scheduleAutoSave()"></td>
+                <td class="p-0"><input type="text" id="dur_${d1_16}" value="${row16Data ? row16Data.dur : ''}" class="text-center bg-slate-50 dur-input" readonly placeholder="" ${!isValid1_16 ? 'disabled' : ''}></td>
+                <td colspan="5" class="p-0">
+                    <table class="w-full h-full border-collapse">
+                        <tr>
+                            <td class="text-center font-bold bg-slate-50 w-12 border-r border-black text-[11px]">合計</td>
+                            <td class="text-center bg-slate-50 w-20 border-r border-black p-0">
+                                <select id="total-unit-select" onchange="calculateTotal(); scheduleAutoSave();" class="print-select text-center text-[11px] font-bold cursor-pointer h-full w-full">
+                                    <option value="単位">単位</option>
+                                    <option value="回数">回数</option>
+                                    <option value="出来高">出来高</option>
+                                    <option value="時間">時間</option>
+                                </select>
+                            </td>
+                            <td class="text-center bg-white p-0">
+                                <div class="flex items-center justify-center gap-1 px-1">
+                                    <input type="text" id="total-days-count" readonly class="text-center font-bold w-12 border-b border-gray-400 text-[11px] bg-slate-50" placeholder="0">
+                                    <span class="text-[11px]" id="total-unit-label">日</span>
+                                </div>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            `;
+            tbody.appendChild(tr16);
+
+            if (savedData && savedData.totalUnitType) {
+                document.getElementById('total-unit-select').value = savedData.totalUnitType;
+            }
+            recalculateDurationsAndTotals();
+        }
+
+        // 時刻の正規化フォーマット補正 (例: "9" -> "09:00", "930" -> "09:30", "14:3" -> "14:30")
+        function formatTimeString(str) {
+            if (!str) return '';
+            str = str.replace(/時/g, ':').replace(/分/g, '').replace(/\s+/g, '').trim();
+            if (str.match(/^\d{1,2}$/)) {
+                return str.padStart(2, '0') + ':00';
+            }
+            if (str.match(/^\d{3,4}$/)) {
+                if (str.length === 3) str = '0' + str;
+                return str.slice(0, 2) + ':' + str.slice(2);
+            }
+            if (str.match(/^\d{1,2}:\d{1,2}$/)) {
+                const parts = str.split(':');
+                return parts[0].padStart(2, '0') + ':' + parts[1].padStart(2, '0');
+            }
+            return str;
+        }
+
+        function onTimeBlur(day) {
+            const startEl = document.getElementById(`start_${day}`);
+            const endEl = document.getElementById(`end_${day}`);
+            if (startEl && startEl.value) startEl.value = formatTimeString(startEl.value);
+            if (endEl && endEl.value) endEl.value = formatTimeString(endEl.value);
+            calculateRowDuration(day);
+            calculateTotal();
+            scheduleAutoSave();
+        }
+
+        // 休憩控除ルールおよび経過時間計算
+        function calculateRowDuration(day) {
+            const startEl = document.getElementById(`start_${day}`);
+            const endEl = document.getElementById(`end_${day}`);
+            const durEl = document.getElementById(`dur_${day}`);
+            if (!startEl || !endEl || !durEl) return;
+
+            const startVal = startEl.value.trim();
+            const endVal = endEl.value.trim();
+
+            if (!startVal || !endVal) {
+                durEl.value = '';
+                return;
+            }
+
+            const [sH, sM] = startVal.split(':').map(Number);
+            const [eH, eM] = endVal.split(':').map(Number);
+
+            if (isNaN(sH) || isNaN(sM) || isNaN(eH) || isNaN(eM)) {
+                durEl.value = '';
+                return;
+            }
+
+            let startMin = sH * 60 + sM;
+            let endMin = eH * 60 + eM;
+            if (endMin < startMin) endMin += 24 * 60; // 日付跨ぎ対応
+
+            let diffMin = endMin - startMin;
+            let diffHours = diffMin / 60;
+
+            // 休憩控除ルール
+            let breakHours = 0;
+            if (diffHours >= 8) {
+                breakHours = 1.0;
+            } else if (diffHours >= 6) {
+                breakHours = 0.75; // 45分
+            }
+
+            let netHours = diffHours - breakHours;
+            if (netHours < 0) netHours = 0;
+
+            // 小数第2位まで (例: 7.5 など)
+            durEl.value = Math.round(netHours * 100) / 100;
+        }
+
+        function recalculateDurationsAndTotals() {
+            const year = parseInt(document.getElementById('report-year').value);
+            const month = parseInt(document.getElementById('report-month').value);
+            const daysInMonth = new Date(year, month, 0).getDate();
+
+            for (let d = 1; d <= daysInMonth; d++) {
+                calculateRowDuration(d);
+            }
+            calculateTotal();
+        }
+
+        // 計算ロジック・連動
+        function parseNum(id) {
+            const el = document.getElementById(id);
+            if (!el) return 0;
+            const val = el.value.replace(/,/g, '');
+            const num = parseFloat(val);
+            return isNaN(num) ? 0 : num;
+        }
+
+        function formatNum(num) {
+            return num.toLocaleString();
+        }
+
+        function calculateTotal() {
+            const year = parseInt(document.getElementById('report-year').value);
+            const month = parseInt(document.getElementById('report-month').value);
+            const daysInMonth = new Date(year, month, 0).getDate();
+
+            let totalDaysWorked = 0;
+            let totalHoursWorked = 0;
+
+            for (let d = 1; d <= daysInMonth; d++) {
+                const sEl = document.getElementById(`start_${d}`);
+                const eEl = document.getElementById(`end_${d}`);
+                const dEl = document.getElementById(`dur_${d}`);
+                if (sEl && eEl && sEl.value.trim() && eEl.value.trim()) {
+                    totalDaysWorked++;
+                    if (dEl && dEl.value) {
+                        totalHoursWorked += parseFloat(dEl.value) || 0;
+                    }
+                }
+            }
+
+            // 合計表示の更新
+            const unitSelectVal = document.getElementById('total-unit-select').value;
+            document.getElementById('total-unit-label').textContent = unitSelectVal === '時間' ? '時間' : '日';
+            document.getElementById('total-days-count').value = unitSelectVal === '時間' ? (Math.round(totalHoursWorked * 100) / 100) : totalDaysWorked;
+
+            // 配分金計算の項目1への自動連動
+            const calc1Unit = document.getElementById('calc1_unit').value.trim();
+            if (calc1Unit === '時間' || calc1Unit === '日' || !calc1Unit) {
+                document.getElementById('calc1_val2').value = unitSelectVal === '時間' ? (Math.round(totalHoursWorked * 100) / 100) : totalDaysWorked;
+            }
+
+            // 1行目の積
+            const c1_v1 = parseNum('calc1_val1');
+            const c1_v2 = parseNum('calc1_val2');
+            const c1_res = c1_v1 * c1_v2;
+            document.getElementById('calc1_res').value = c1_res !== 0 ? formatNum(c1_res) : '';
+
+            // 2行目の積
+            const c2_v1 = parseNum('calc2_val1');
+            const c2_v2 = parseNum('calc2_val2');
+            const c2_res = c2_v1 * c2_v2;
+            document.getElementById('calc2_res').value = c2_res !== 0 ? formatNum(c2_res) : '';
+
+            // その他項目
+            const travel = parseNum('val_travel');
+            const deduction = parseNum('val_deduction');
+            const advance = parseNum('val_advance');
+            const material = parseNum('val_material');
+            const admin = parseNum('val_admin');
+
+            const subtotal = c1_res + c2_res + travel + advance - deduction;
+            document.getElementById('val_subtotal').value = subtotal !== 0 ? formatNum(subtotal) : '';
+
+            const total = subtotal + material + admin;
+            document.getElementById('val_total').value = total !== 0 ? formatNum(total) : '';
+        }
+
+        // ロック機能の制御
+        function toggleLockState() {
+            const isLocked = document.getElementById('lock-checkbox').checked;
+            
+            // テーブルヘッダーのロック
+            const headers = ['th-item-a', 'th-item-b', 'th-item-c', 'th-item-d', 'th-item-e', 'th-item-f'];
+            headers.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.setAttribute('contenteditable', !isLocked);
+                }
+            });
+
+            // 単位欄のロック
+            document.getElementById('calc1_unit').readOnly = isLocked;
+            document.getElementById('calc2_unit').readOnly = isLocked;
+
+            scheduleAutoSave();
+        }
+
+        // 音声入力機能 (Web Speech API)
+        function setupVoiceRecognition() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                document.getElementById('voice-btn').style.display = 'none';
+                return;
+            }
+
+            recognition = new SpeechRecognition();
+            recognition.lang = 'ja-JP';
+            recognition.interimResults = false;
+            recognition.maxAlternatives = 1;
+
+            recognition.onstart = () => {
+                isRecording = true;
+                document.getElementById('voice-banner').classList.remove('hidden');
+                document.getElementById('voice-btn').classList.remove('bg-amber-500', 'hover:bg-amber-600');
+                document.getElementById('voice-btn').classList.add('bg-red-600', 'animate-pulse');
+                document.getElementById('voice-btn-text').textContent = '音声認識中...';
+            };
+
+            recognition.onresult = (event) => {
+                const speechText = event.results[0][0].transcript;
+                processVoiceCommand(speechText);
+            };
+
+            recognition.onerror = (event) => {
+                console.error('Speech recognition error', event.error);
+                stopVoiceInput();
+            };
+
+            recognition.onend = () => {
+                stopVoiceInput();
+            };
+        }
+
+        function toggleVoiceInput() {
+            if (!recognition) {
+                alert('お使いのブラウザは音声認識に対応していません。');
+                return;
+            }
+            if (isRecording) {
+                recognition.stop();
+            } else {
+                try {
+                    recognition.start();
+                } catch (e) {
+                    console.error(e);
+                }
+            }
+        }
+
+        function stopVoiceInput() {
+            isRecording = false;
+            document.getElementById('voice-banner').classList.add('hidden');
+            document.getElementById('voice-btn').classList.remove('bg-red-600', 'animate-pulse');
+            document.getElementById('voice-btn').classList.add('bg-amber-500', 'hover:bg-amber-600');
+            document.getElementById('voice-btn-text').textContent = '音声入力';
+        }
+
+        // 音声解析・スマートモード分岐ロジック
+        function processVoiceCommand(text) {
+            console.log("Voice Input Received:", text);
+
+            // 削除・クリアコマンドの判定
+            if (text.includes('データ消して') || text.includes('消去して') || text.includes('クリアして')) {
+                const dayMatch = text.match(/(\d+)日/);
+                if (dayMatch) {
+                    const day = parseInt(dayMatch[1]);
+                    const sEl = document.getElementById(`start_${day}`);
+                    const eEl = document.getElementById(`end_${day}`);
+                    if (sEl && eEl) {
+                        sEl.value = '';
+                        eEl.value = '';
+                        onTimeBlur(day);
+                        return;
+                    }
+                }
+            }
+
+            // モードA：特定フィールド指定入力（特定のinputにフォーカスがある場合）
+            if (activeInputEl && (activeInputEl.id.startsWith('start_') || activeInputEl.id.startsWith('end_'))) {
+                const parsedTime = parseVoiceTimeToTimeStr(text);
+                if (parsedTime) {
+                    activeInputEl.value = parsedTime;
+                    const dayMatch = activeInputEl.id.match(/_(\d+)$/);
+                    if (dayMatch) {
+                        onTimeBlur(parseInt(dayMatch[1]));
+                    }
+                    return;
+                }
+            }
+
+            // モードB：日付指定一括入力（例：「15日 9時 17時」「20日 9時半から18時」）
+            const dayMatch = text.match(/(\d+)日/);
+            if (dayMatch) {
+                const day = parseInt(dayMatch[1]);
+                const timeMatches = text.match(/[0-9０-９]+時半?|[0-9０-９]+:[0-9０-９]+/g);
+                const sEl = document.getElementById(`start_${day}`);
+                const eEl = document.getElementById(`end_${day}`);
+                
+                if (sEl && eEl && timeMatches && timeMatches.length >= 1) {
+                    sEl.value = parseVoiceTimeToTimeStr(timeMatches[0]);
+                    if (timeMatches.length >= 2) {
+                        eEl.value = parseVoiceTimeToTimeStr(timeMatches[1]);
+                    }
+                    onTimeBlur(day);
+                    return;
+                }
+            }
+
+            // モードC：作業内容入力（テキストを仕事の内容欄へ追記）
+            const workTextarea = document.getElementById('work-content');
+            if (workTextarea) {
+                workTextarea.value = (workTextarea.value ? workTextarea.value + "\n" : "") + text;
+                scheduleAutoSave();
+            }
+        }
+
+        // 音声発話から時刻文字列への変換補助
+        function parseVoiceTimeToTimeStr(str) {
+            if (!str) return '';
+            // 「午後3時半」→ 15:30 などの処理
+            let isPM = str.includes('午後') || str.includes('夕方') || str.includes('夜');
+            let hours = 0;
+            let minutes = 0;
+
+            const hMatch = str.match(/([0-9０-９]+)時/);
+            if (hMatch) {
+                hours = parseInt(hMatch[1].replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0)));
+                if (isPM && hours < 12) hours += 12;
+            }
+
+            if (str.includes('半')) {
+                minutes = 30;
+            } else {
+                const mMatch = str.match(/([0-9０-９]+)分/);
+                if (mMatch) {
+                    minutes = parseInt(mMatch[1].replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0)));
+                }
+            }
+
+            if (str.includes('正午')) {
+                hours = 12;
+                minutes = 0;
+            }
+
+            return String(hours).padStart(2, '0') + ':' + String(minutes).padStart(2, '0');
+        }
+
+        // LocalStorage 自動保存 (デバウンス処理)
+        function scheduleAutoSave() {
+            document.getElementById('save-status').textContent = '（保存中...）';
+            clearTimeout(saveTimeout);
+            saveTimeout = setTimeout(() => {
+                saveToLocalStorage();
+                document.getElementById('save-status').textContent = '（自動保存済み）';
+                setTimeout(() => {
+                    document.getElementById('save-status').textContent = '';
+                }, 2000);
+            }, 1000);
+        }
+
+        function collectSystemData() {
+            const year = document.getElementById('report-year').value;
+            const month = document.getElementById('report-month').value;
+            const daysInMonth = new Date(parseInt(year), parseInt(month), 0).getDate();
+
+            const rows = [];
+            for (let d = 1; d <= daysInMonth; d++) {
+                const sEl = document.getElementById(`start_${d}`);
+                const eEl = document.getElementById(`end_${d}`);
+                const dEl = document.getElementById(`dur_${d}`);
+                if (sEl) {
+                    rows.push({
+                        day: d,
+                        start: sEl.value,
+                        end: eEl ? eEl.value : '',
+                        dur: dEl ? dEl.value : ''
+                    });
+                }
+            }
+
+            return {
+                isLocked: document.getElementById('lock-checkbox').checked,
+                year: year,
+                month: month,
+                workContent: document.getElementById('work-content').value,
+                contractTitle: document.getElementById('contract-title').value,
+                contractNo: document.getElementById('contract-no').value,
+                clientName: document.getElementById('client-name').value,
+                memberNo: document.getElementById('member-no').value,
+                memberName: document.getElementById('member-name').value,
+                officeNotes: document.getElementById('office-notes').value,
+                headers: {
+                    itemA: document.getElementById('th-item-a').textContent,
+                    itemB: document.getElementById('th-item-b').textContent,
+                    itemC: document.getElementById('th-item-c').textContent,
+                    itemD: document.getElementById('th-item-d').textContent,
+                    itemE: document.getElementById('th-item-e').textContent,
+                    itemF: document.getElementById('th-item-f').textContent
+                },
+                calc1: {
+                    name: document.getElementById('calc1_name').value,
+                    unit: document.getElementById('calc1_unit').value,
+                    val1: document.getElementById('calc1_val1').value,
+                    val2: document.getElementById('calc1_val2').value
+                },
+                calc2: {
+                    name: document.getElementById('calc2_name').value,
+                    unit: document.getElementById('calc2_unit').value,
+                    val1: document.getElementById('calc2_val1').value,
+                    val2: document.getElementById('calc2_val2').value
+                },
+                totals: {
+                    travel: document.getElementById('val_travel').value,
+                    deduction: document.getElementById('val_deduction').value,
+                    advance: document.getElementById('val_advance').value,
+                    material: document.getElementById('val_material').value,
+                    admin: document.getElementById('val_admin').value,
+                    totalUnitType: document.getElementById('total-unit-select').value
+                },
+                rows: rows
+            };
+        }
+
+        function saveToLocalStorage() {
+            const data = collectSystemData();
+            localStorage.setItem('machida_sjc_report_data', JSON.stringify(data));
+        }
+
+        function loadFromLocalStorage() {
+            const savedJson = localStorage.getItem('machida_sjc_report_data');
+            if (!savedJson) return false;
+            try {
+                const data = JSON.parse(savedJson);
+                restoreData(data);
+                return true;
+            } catch (e) {
+                console.error("Failed to load local storage data", e);
+                return false;
+            }
+        }
+
+        function restoreData(data) {
+            if (!data) return;
+
+            document.getElementById('report-year').value = data.year || '2026';
+            document.getElementById('report-month').value = data.month || '9';
+
+            // カレンダー構築
+            buildCalendar(data);
+
+            document.getElementById('work-content').value = data.workContent || '';
+            document.getElementById('contract-title').value = data.contractTitle || '';
+            document.getElementById('contract-no').value = data.contractNo || '';
+            document.getElementById('client-name').value = data.clientName || '';
+            document.getElementById('member-no').value = data.memberNo || '';
+            document.getElementById('member-name').value = data.memberName || '';
+            document.getElementById('office-notes').value = data.officeNotes || '';
+
+            if (data.headers) {
+                if(document.getElementById('th-item-a')) document.getElementById('th-item-a').textContent = data.headers.itemA || '開始時刻';
+                if(document.getElementById('th-item-b')) document.getElementById('th-item-b').textContent = data.headers.itemB || '終了時刻';
+                if(document.getElementById('th-item-c')) document.getElementById('th-item-c').textContent = data.headers.itemC || '時間';
+                if(document.getElementById('th-item-d')) document.getElementById('th-item-d').textContent = data.headers.itemD || '開始時刻';
+                if(document.getElementById('th-item-e')) document.getElementById('th-item-e').textContent = data.headers.itemE || '終了時刻';
+                if(document.getElementById('th-item-f')) document.getElementById('th-item-f').textContent = data.headers.itemF || '時間';
+            }
+
+            if (data.calc1) {
+                document.getElementById('calc1_name').value = data.calc1.name || '';
+                document.getElementById('calc1_unit').value = data.calc1.unit || '';
+                document.getElementById('calc1_val1').value = data.calc1.val1 || '';
+                document.getElementById('calc1_val2').value = data.calc1.val2 || '';
+            }
+            if (data.calc2) {
+                document.getElementById('calc2_name').value = data.calc2.name || '';
+                document.getElementById('calc2_unit').value = data.calc2.unit || '';
+                document.getElementById('calc2_val1').value = data.calc2.val1 || '';
+                document.getElementById('calc2_val2').value = data.calc2.val2 || '';
+            }
+            if (data.totals) {
+                document.getElementById('val_travel').value = data.totals.travel || '';
+                document.getElementById('val_deduction').value = data.totals.deduction || '';
+                document.getElementById('val_advance').value = data.totals.advance || '';
+                document.getElementById('val_material').value = data.totals.material || '';
+                document.getElementById('val_admin').value = data.totals.admin || '';
+                if(document.getElementById('total-unit-select')) {
+                    document.getElementById('total-unit-select').value = data.totals.totalUnitType || '単位';
+                }
+            }
+
+            // ロックフラグの適用
+            if (data.isLocked !== undefined) {
+                document.getElementById('lock-checkbox').checked = data.isLocked;
+                toggleLockState();
+            }
+
+            calculateTotal();
+        }
+
+        // JSON エクスポート
+        function exportJSON() {
+            const data = collectSystemData();
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `就業報告書_${data.year}年${data.month}月.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // JSON インポート
+        function importJSON(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    restoreData(data);
+                    saveToLocalStorage();
+                    alert('就業報告書のデータを正常に読み込みました。');
+                } catch (err) {
+                    alert('JSONファイルの読み込みに失敗しました。ファイル形式を確認してください。');
+                    console.error(err);
+                }
+            };
+            reader.readAsText(file);
+            event.target.value = '';
+        }
+
+        // PDF保存 (html2pdf.js)
+        function exportPDF() {
+            const element = document.getElementById('pdf-container');
+            const year = document.getElementById('report-year').value;
+            const month = document.getElementById('report-month').value;
+            const opt = {
+                margin:       0,
+                filename:     `就業報告書_${year}年${month}月分.pdf`,
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2, useCORS: true, letterRendering: true },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+            html2pdf().from(element).set(opt).save();
+        }
+
+        // メール送信ボタンの処理 (メーラー起動・メアド指定)
+        function sendByEmail() {
+            const year = document.getElementById('report-year').value;
+            const month = document.getElementById('report-month').value;
+            const memberName = document.getElementById('member-name').value || '未入力会員';
+            const clientName = document.getElementById('client-name').value || '未入力先';
+            const total = document.getElementById('val_total').value || '0';
+
+            const emailTo = "houkoku@machida-sjc.or.jp";
+            const subject = encodeURIComponent(`【就業報告書提出】${year}年${month}月分 - ${memberName}`);
+            const body = encodeURIComponent(
+                `町田市シルバー人材センター 事務局 御中\n\n` +
+                `${year}年${month}月分の就業報告書を提出いたします。\n\n` +
+                `■会員氏名: ${memberName}\n` +
+                `■発注者名(契約件名): ${clientName}\n` +
+                `■合計金額: ${total} 円\n\n` +
+                `※PDFファイルまたは内容を保存して添付、またはシステムから送信してください。`
+            );
+
+            window.location.href = `mailto:${emailTo}?subject=${subject}&body=${body}`;
+        }
+
+        // 初期化・クリア
+        function clearData() {
+            if (confirm("入力した内容をすべてクリアしますか？")) {
+                localStorage.removeItem('machida_sjc_report_data');
+                document.querySelectorAll('input:not([type="checkbox"]), textarea').forEach(el => {
+                    el.value = '';
+                });
+                document.getElementById('report-year').value = '2026';
+                document.getElementById('report-month').value = '9';
+                document.getElementById('lock-checkbox').checked = false;
+                toggleLockState();
+                buildCalendar();
+                calculateTotal();
+                alert('データを初期化しました。');
+            }
+        }
+    </script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+            // 'service-worker.js' を登録 (index.htmlからの相対パス)
+            navigator.serviceWorker.register('service-worker.js')
+              .then((registration) => {
+                console.log('Service Worker registered successfully:', registration.scope);
+              })
+              .catch((error) => {
+                console.log('Service Worker registration failed:', error);
+              });
+          });
+        }
+    </script>
+</body>
+</html>
