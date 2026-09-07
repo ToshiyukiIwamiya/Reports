@@ -1,0 +1,1825 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="manifest" href="manifest.json">
+  　<link rel="apple-touch-icon" href="MSJ192.png">
+  　<meta name="apple-mobile-web-app-capable" content="yes">
+  　<meta name="apple-mobile-web-app-status-bar-style" content="default">
+  　<meta name="apple-mobile-web-app-title" content="就業報告書">
+    <title>就業報告書 入力システム</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- html2pdf.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        @media print {
+            @page {
+                size: A4 portrait;
+                margin: 0;
+            }
+            body {
+                background: white;
+                margin: 0;
+                padding: 0;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                min-height: 100vh;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .no-print {
+                display: none !important;
+            }
+            .print-wrapper {
+                width: 100% !important;
+                overflow: visible !important;
+                padding: 0 !important;
+            }
+            .print-container {
+                box-shadow: none !important;
+                margin: auto !important;
+                width: 192mm !important;
+                max-width: 192mm !important;
+                height: 282mm !important;
+                max-height: 282mm !important;
+                padding: 6mm 7mm !important;
+                box-sizing: border-box !important;
+                overflow: hidden !important;
+                page-break-after: avoid !important;
+                page-break-inside: avoid !important;
+            }
+            select.print-select {
+                -webkit-appearance: none;
+                -moz-appearance: none;
+                appearance: none;
+                background: transparent;
+                border: none;
+                text-align-last: center;
+            }
+            .report-table th, .report-table td {
+                height: 24px !important;
+                font-size: 12px !important;
+            }
+        }
+        input, textarea, select {
+            background-color: transparent;
+            border: none;
+            outline: none;
+            width: 100%;
+            height: 100%;
+            padding: 2px 4px;
+            font-size: 13px;
+        }
+        input:focus, textarea:focus, select:focus {
+            background-color: rgba(59, 130, 246, 0.08);
+            box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.5);
+        }
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+        .report-table {
+            table-layout: fixed;
+            width: 100%;
+        }
+        .report-table th, .report-table td {
+            border: 1px solid #000;
+            padding: 1px 2px;
+            font-size: 12px;
+            height: 28px;
+            vertical-align: middle;
+            overflow: hidden;
+            white-space: nowrap;
+        }
+        .col-day {
+            width: 24px !important;
+            min-width: 24px !important;
+            max-width: 24px !important;
+        }
+        .col-wday {
+            width: 32px !important;
+            min-width: 32px !important;
+            max-width: 32px !important;
+        }
+        .col-eval {
+            width: 48px !important;
+            min-width: 48px !important;
+            max-width: 48px !important;
+        }
+        .main-border {
+            border: 2px solid #000;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 min-h-screen py-8 print:py-0" onload="initReport()">
+
+    <!-- 操作パネル (no-print) -->
+    <div class="max-w-[210mm] mx-auto mb-3 px-4 no-print bg-white p-3 rounded-lg shadow border border-slate-200">
+        <h1 class="text-lg font-bold text-slate-800">就業報告書 入力・作成フォーム</h1>
+        <div class="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-100">
+            <!-- 1. チェックボックス：「会員用に摘要名と項目名をロックする」 -->
+            <label class="flex items-center gap-1.5 text-xs font-medium cursor-pointer bg-slate-50 px-2 py-1.5 rounded border border-slate-300 select-none">
+                <input type="checkbox" id="is-locked-checkbox" onchange="()" class="rounded text-blue-600 focus:ring-blue-500 h-4 w-4">
+                <span>項目名ロック</span>toggleLockState
+            </label>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-100">
+            <!-- 2. 音声入力（マイクアイコン付き） -->
+            <button id="voice-btn" onclick="toggleVoiceInput()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium px-3 py-1.5 rounded shadow transition flex items-center gap-1">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
+                <span id="voice-btn-text">音声入力</span>
+            </button>
+
+            <!-- 3. ファイル読込 (JSONインポート / 複数選択対応) -->
+            <label class="bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-medium px-3 py-1.5 rounded shadow cursor-pointer transition flex items-center">
+                <span>ファイル読込</span>
+                <input type="file" id="import-file" accept=".json" multiple class="hidden" onchange="importJSONFiles(event)">
+            </label>
+
+            <!-- 4. ファイル保存 (JSONエクスポート) -->
+            <button onclick="exportJSONFile()" class="bg-slate-700 hover:bg-slate-800 text-white text-xs font-medium px-3 py-1.5 rounded shadow transition">
+                ファイル保存
+            </button>
+
+            <!-- 5. 一時保存（LocalStorageへ保存） -->
+            <button onclick="saveToLocalStorageManually()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium px-3 py-1.5 rounded shadow transition">
+                一時保存
+            </button>
+
+            <!-- 6. クリア（LocalStorageを消去してリロード） -->
+            <button onclick="clearLocalStorageAndReload()" class="bg-rose-100 hover:bg-rose-200 text-rose-700 text-xs font-medium px-3 py-1.5 rounded shadow transition">
+                クリア
+            </button>
+
+            <!-- 7. 印刷（window.print） -->
+            <button onclick="window.print()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium px-3 py-1.5 rounded shadow transition">
+                印刷
+            </button>
+
+            <!-- 8. PDF保存（html2pdf.js） -->
+            <button onclick="saveAsPDF()" class="bg-amber-600 hover:bg-amber-700 text-white text-xs font-medium px-3 py-1.5 rounded shadow transition">
+                PDF保存
+            </button>
+
+            <!-- 9. メール送信（mailto） -->
+            <button onclick="sendEmailReport()" class="bg-teal-600 hover:bg-teal-700 text-white text-xs font-medium px-3 py-1.5 rounded shadow transition">
+                メール送信
+            </button>
+
+            <!-- 提出履歴管理モーダルを開くボタン（一番最後） -->
+            <button onclick="openHistoryModal()" class="bg-purple-600 hover:bg-purple-700 text-white text-xs font-medium px-3 py-1.5 rounded shadow transition">
+                提出履歴管理
+            </button>
+        </div>
+        <div id="voice-status" class="mt-1.5 text-xs text-emerald-700 font-medium hidden">🎤 音声認識中...話してください</div>
+    </div>
+
+    <!-- 横幅が狭い端末でもレイアウトが潰れないスクロールラッパー -->
+    <div class="w-full overflow-x-auto pb-6 print:pb-0 print-wrapper">
+    <div class="print-container max-w-[192mm] min-w-[700px] mx-auto bg-white p-[8mm] shadow-lg box-border text-black font-sans relative flex flex-col justify-between" style="min-height: 282mm;">
+        
+        <div class="flex justify-between items-end mb-2">
+            <div class="flex items-center gap-3">
+                <h2 class="text-2xl font-black tracking-wider border-2 border-black px-3 py-1">就業報告書</h2>
+                <span class="bg-black text-white font-bold px-2 py-1 text-sm tracking-widest">提出用</span>
+            </div>
+            <div class="text-base font-medium tracking-widest flex items-center gap-2">
+                <div class="flex items-center gap-1">
+                    <select id="report-format" onchange="updateCalendar(); triggerAutoSave();" class="print-select font-bold text-sm border-b border-black cursor-pointer bg-white">
+                        <option value="1">様式1（文字列）</option>
+                        <option value="2">様式2（数値）</option>
+                        <option value="3" selected>様式3（時刻）</option>
+                        <option value="4">様式4（4分割時刻）</option>
+                    </select>
+                </div>
+                <div class="flex items-center gap-1">
+                    <select id="report-year" onchange="updateCalendar(); triggerAutoSave();" class="print-select text-center font-bold text-base w-20 border-b border-black cursor-pointer">
+                    </select> 年 
+                    <select id="report-month" onchange="updateCalendar(); triggerAutoSave();" class="print-select text-center font-bold text-base w-12 border-b border-black cursor-pointer">
+                    </select> 月
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 mb-2">
+            <div class="main-border flex flex-col h-36 print:h-32">
+                <div class="bg-slate-100 border-b border-black px-2 py-0.5 text-[12px] font-bold">
+                    【仕事の内容／連絡事項／申し送り事項】
+                </div>
+                <div class="flex-grow p-1">
+                    <textarea id="work-content-memo" class="resize-none text-xs" oninput="triggerAutoSave()" placeholder="ここに仕事の内容や連絡事項を入力してください"></textarea>
+                </div>
+            </div>
+
+            <div class="main-border flex flex-col justify-between p-1 text-xs space-y-0 h-36 print:h-32">
+                <div class="flex items-center border-b border-gray-300 pb-0.5">
+                    <span class="w-20 font-bold shrink-0">契約件名：</span>
+                    <input type="text" id="contract-title" class="flex-grow font-medium min-w-0 py-0 text-xs" oninput="triggerAutoSave()" placeholder="">
+                    <span class="font-bold shrink-0 ml-1">業務委託</span>
+                </div>
+                <div class="flex items-center border-b border-gray-300 pb-0.5">
+                    <span class="w-20 font-bold shrink-0">契約番号：</span>
+                    <input type="text" id="contract-no" class="flex-grow min-w-0 py-0 text-xs" oninput="triggerAutoSave()" placeholder="">
+                </div>
+                <div class="flex items-center border-b border-gray-300 pb-0.5">
+                    <span class="w-20 font-bold shrink-0">発注者名：</span>
+                    <input type="text" id="client-name" class="flex-grow font-medium min-w-0 py-0 text-xs" oninput="triggerAutoSave()" placeholder="">
+                    <span class="font-bold ml-1 shrink-0">様</span>
+                </div>
+                <div class="flex items-center border-b border-gray-300 pb-0.5">
+                    <span class="w-20 font-bold shrink-0">会員番号：</span>
+                    <input type="text" id="member-no" class="flex-grow min-w-0 py-0 text-xs" oninput="triggerAutoSave()" placeholder="">
+                </div>
+                <div class="flex items-center">
+                    <span class="w-20 font-bold shrink-0">会員氏名：</span>
+                    <input type="text" id="member-name" class="flex-grow font-medium min-w-0 py-0 text-xs" oninput="triggerAutoSave()" placeholder="">
+                </div>
+            </div>
+        </div>
+
+        <table class="w-full report-table border-collapse mb-2" id="report-table-el">
+            <thead>
+                <tr id="table-header-row" class="bg-slate-100 text-center font-bold">
+                </tr>
+            </thead>
+            <tbody id="calendar-body">
+            </tbody>
+        </table>
+
+        <div class="grid grid-cols-2 gap-2.5">
+            <div class="flex flex-col justify-between">
+                <div class="main-border h-48 print:h-44 flex flex-col mb-1.5">
+                    <div class="bg-slate-100 border-b border-black px-2 py-0.5 text-[12px] font-bold">
+                        【事務局記入欄】
+                    </div>
+                    <div class="flex-grow p-1">
+                        <textarea id="secretariat-memo" class="resize-none text-xs" oninput="triggerAutoSave()" placeholder=""></textarea>
+                    </div>
+                </div>
+
+                <div class="text-center border border-black p-1.5 bg-slate-50 text-[12px] leading-tight">
+                    <div class="font-bold text-xs">公益社団法人 町田市シルバー人材センター</div>
+                    <div>〒194-0022 町田市森野1-1-15</div>
+                    <div>電話 042-723-2147　FAX 042-724-0407</div>
+                    <div class="font-medium text-slate-700 mt-0.5">提出専用メールアドレス</div>
+                    <div class="text-blue-600 underline">houkoku@machida-sjc.or.jp</div>
+                </div>
+            </div>
+
+            <div class="flex flex-col justify-between">
+                <div class="border border-black p-1.5 text-[11px] flex justify-between items-center mb-1">
+                    <span class="leading-tight text-[14px]">貴センターに発注した仕事が<br>履行されたことを確認いたします。</span>
+                    <div class="border border-black w-24 h-16 flex items-center justify-center text-center text-gray-400 text-xs bg-white shrink-0">
+                        印またはサイン
+                    </div>
+                </div>
+
+                <div class="main-border p-1.5 text-xs space-y-1 print:space-y-0.5 bg-white">
+                    <div class="font-bold text-[12px] border-b border-black pb-0.5 mb-0.5">配分金</div>
+                    
+                    <div class="flex items-center justify-between">
+                        <input type="text" id="item-name-1" maxlength="10" class="border-b border-gray-400 w-24 text-left shrink font-medium text-xs" value="時間" placeholder="項目名(10文字)" oninput="syncAllocationNames(); triggerAutoSave();">
+                        <div class="flex items-center gap-1">
+                            <input type="text" id="p1-price" class="border-b border-gray-400 w-10 text-right shrink calc-source text-xs" placeholder="0" oninput="formatAndCalcFinancials(this); triggerAutoSave();" onblur="formatInput(this)">
+                            <span class="shrink-0 text-xs">円×</span>
+                            <input type="text" id="p1-count" class="border-b border-gray-400 w-10 text-right shrink calc-source text-xs bg-slate-50 font-bold" readonly placeholder="0" title="評価合計と連動">
+                            <span class="shrink-0 text-xs">＝</span>
+                            <input type="text" id="p1-total" class="border-b border-gray-400 w-14 text-right font-medium shrink calc-total text-xs" readonly placeholder="0">
+                            <span class="shrink-0 text-xs w-4 text-left">円</span>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center justify-between" id="row-allocation-2">
+                        <input type="text" id="item-name-2" maxlength="10" class="border-b border-gray-400 w-24 text-left shrink font-medium text-xs" value="数値2" placeholder="項目名(10文字)" oninput="syncAllocationNames(); triggerAutoSave();">
+                        <div class="flex items-center gap-1">
+                            <input type="text" id="p2-price" class="border-b border-gray-400 w-10 text-right shrink calc-source text-xs" placeholder="0" oninput="formatAndCalcFinancials(this); triggerAutoSave();" onblur="formatInput(this)">
+                            <span class="shrink-0 text-xs">円×</span>
+                            <input type="text" id="p2-count" class="border-b border-gray-400 w-10 text-right shrink calc-source text-xs bg-slate-50 font-bold" readonly placeholder="0" title="様式2の数値2合計と連動">
+                            <span class="shrink-0 text-xs">＝</span>
+                            <input type="text" id="p2-total" class="border-b border-gray-400 w-14 text-right font-medium shrink calc-total text-xs" readonly placeholder="0">
+                            <span class="shrink-0 text-xs w-4 text-left">円</span>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between">
+                        <input type="text" id="item-name-3" maxlength="10" class="border-b border-gray-400 w-24 text-left shrink font-medium text-xs locked-target" value="交通費等" placeholder="項目名(10文字)" oninput="triggerAutoSave()">
+                        <div class="flex items-center gap-1">
+                            <input type="text" id="p3-price" class="border-b border-gray-400 w-10 text-right shrink calc-source text-xs" placeholder="0" oninput="formatAndCalcFinancials(this); triggerAutoSave();" onblur="formatInput(this)">
+                            <span class="shrink-0 text-xs">円×</span>
+                            <input type="text" id="p3-count" class="border-b border-gray-400 w-10 text-right shrink calc-source text-xs" placeholder="0" oninput="formatAndCalcFinancials(this); triggerAutoSave();" onblur="formatInput(this)">
+                            <span class="shrink-0 text-xs">＝</span>
+                            <input type="text" id="p3-total" class="border-b border-gray-400 w-14 text-right font-medium shrink calc-total text-xs" readonly placeholder="0">
+                            <span class="shrink-0 text-xs w-4 text-left">円</span>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between">
+                        <input type="text" id="item-name-4" maxlength="10" class="border-b border-gray-400 w-24 text-left shrink font-medium text-xs locked-target" value="控  除" placeholder="項目名(10文字)" oninput="triggerAutoSave()">
+                        <div class="flex items-center gap-1">
+                            <div class="w-12"></div>
+                            <span class="w-2"></span>
+                            <div class="w-8"></div>
+                            <span class="w-3"></span>
+                            <input type="text" id="item-deduction" class="border-b border-gray-400 w-16 text-right font-medium shrink sum-group-1 text-xs" placeholder="0" oninput="formatAndCalcFinancials(this); triggerAutoSave();" onblur="formatInput(this)">
+                            <span class="shrink-0 text-xs w-4 text-left">円</span>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between">
+                        <input type="text" id="item-name-5" maxlength="10" class="border-b border-gray-400 w-24 text-left shrink font-medium text-xs locked-target" value="立替材料費" placeholder="項目名(10文字)" oninput="triggerAutoSave()">
+                        <div class="flex items-center gap-1">
+                            <div class="w-12"></div>
+                            <span class="w-2"></span>
+                            <div class="w-8"></div>
+                            <span class="w-3"></span>
+                            <input type="text" id="item-advance" class="border-b border-gray-400 w-16 text-right font-medium shrink sum-group-1 text-xs" placeholder="0" oninput="formatAndCalcFinancials(this); triggerAutoSave();" onblur="formatInput(this)">
+                            <span class="shrink-0 text-xs w-4 text-left">円</span>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between font-bold border-t border-black pt-1">
+                        <span class="shrink-0 text-xs">配分金合計</span>
+                        <div class="flex items-center gap-1">
+                            <div class="w-12"></div>
+                            <span class="w-2"></span>
+                            <div class="w-8"></div>
+                            <span class="w-3"></span>
+                            <input type="text" id="subtotal-amount" class="border-b border-black w-16 text-right font-bold text-xs" readonly placeholder="0">
+                            <span class="shrink-0 text-xs w-4 text-left">円</span>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between">
+                        <input type="text" id="item-name-6" maxlength="10" class="border-b border-gray-400 w-24 text-left shrink font-medium text-xs locked-target" value="材料費" placeholder="項目名(10文字)" oninput="triggerAutoSave()">
+                        <div class="flex items-center gap-1">
+                            <div class="w-12"></div>
+                            <span class="w-2"></span>
+                            <div class="w-8"></div>
+                            <span class="w-3"></span>
+                            <input type="text" id="item-material" class="border-b border-gray-400 w-16 text-right font-medium shrink sum-group-2 text-xs" placeholder="0" oninput="formatAndCalcFinancials(this); triggerAutoSave();" onblur="formatInput(this)">
+                            <span class="shrink-0 text-xs w-4 text-left">円</span>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between">
+                        <input type="text" id="item-name-7" maxlength="10" class="border-b border-gray-400 w-24 text-left shrink font-medium text-xs locked-target" value="事務費" placeholder="項目名(10文字)" oninput="triggerAutoSave()">
+                        <div class="flex items-center gap-1">
+                            <div class="w-12"></div>
+                            <span class="w-2"></span>
+                            <div class="w-8"></div>
+                            <span class="w-3"></span>
+                            <input type="text" id="item-admin" class="border-b border-gray-400 w-16 text-right font-medium shrink sum-group-2 text-xs" placeholder="0" oninput="formatAndCalcFinancials(this); triggerAutoSave();" onblur="formatInput(this)">
+                            <span class="shrink-0 text-xs w-4 text-left">円</span>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between font-black text-sm border-t-2 border-black pt-1">
+                        <span class="shrink-0 text-xs">合　計</span>
+                        <div class="flex items-center gap-1">
+                            <div class="w-12"></div>
+                            <span class="w-2"></span>
+                            <div class="w-8"></div>
+                            <span class="w-3"></span>
+                            <input type="text" id="grand-total-amount" class="border-b-2 border-black w-16 text-right font-black text-xs" readonly placeholder="0">
+                            <span class="shrink-0 text-xs w-4 text-left">円</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+    </div>
+
+    <script>
+        const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
+        let autoSaveTimer = null;
+        let recognition = null;
+        let isListening = false;
+        let focusedInputBeforeVoice = null;
+
+        function initReport() {
+            const yearSelect = document.getElementById('report-year');
+            const monthSelect = document.getElementById('report-month');
+            
+            const currentYear = new Date().getFullYear();
+            const currentMonth = new Date().getMonth() + 1;
+
+            yearSelect.innerHTML = '';
+            monthSelect.innerHTML = '';
+
+            for (let y = 2020; y <= 2035; y++) {
+                const opt = document.createElement('option');
+                opt.value = y;
+                opt.textContent = y;
+                if (y === currentYear) opt.selected = true;
+                yearSelect.appendChild(opt);
+            }
+
+            for (let m = 1; m <= 12; m++) {
+                const opt = document.createElement('option');
+                opt.value = m;
+                opt.textContent = m;
+                if (m === currentMonth) opt.selected = true;
+                monthSelect.appendChild(opt);
+            }
+
+            // ローカルストレージからの復元
+            loadFromLocalStorage();
+            updateCalendar();
+            initSpeechRecognition();
+        }
+
+        // デバウンス付き自動保存
+        function triggerAutoSave() {
+            clearTimeout(autoSaveTimer);
+            autoSaveTimer = setTimeout(() => {
+                saveToLocalStorage(false);
+            }, 1000);
+        }
+
+        function formatNumber(val) {
+            if (val === '' || val === null || isNaN(val)) return '';
+            const num = parseFloat(val);
+            if (isNaN(num)) return '';
+            return num.toLocaleString('ja-JP');
+        }
+
+        function parseNum(str) {
+            if (!str) return 0;
+            const cleaned = str.toString().replace(/,/g, '').trim();
+            const val = parseFloat(cleaned);
+            return isNaN(val) ? 0 : val;
+        }
+
+        function formatInput(input) {
+            const val = parseNum(input.value);
+            if (input.value.trim() !== '' && !isNaN(val)) {
+                input.value = formatNumber(val);
+            }
+            triggerAutoSave();
+        }
+
+        // 時間文字列（"900", "9:00", "0900" 等）を分単位にパース
+        function parseTimeToMinutes(str) {
+            if (!str) return null;
+            let val = str.toString().trim().replace('：', ':');
+            if (!val) return null;
+
+            if (val.includes('正午')) {
+                return { minutes: 12 * 60, formatted: '12:00' };
+            }
+
+            // 音声解析で変換された文字列への対応
+            let h = 0, m = 0;
+            if (val.includes(':')) {
+                const parts = val.split(':');
+                h = parseInt(parts[0], 10) || 0;
+                m = parseInt(parts[1], 10) || 0;
+            } else if (/^\d{1,4}$/.test(val)) {
+                if (val.length <= 2) {
+                    h = parseInt(val, 10);
+                    m = 0;
+                } else if (val.length === 3) {
+                    h = parseInt(val.substring(0, 1), 10);
+                    m = parseInt(val.substring(1), 10);
+                } else if (val.length === 4) {
+                    h = parseInt(val.substring(0, 2), 10);
+                    m = parseInt(val.substring(2), 10);
+                }
+            } else {
+                return null;
+            }
+
+            if (h < 0 || h > 23 || m < 0 || m > 59) return null;
+            return { minutes: h * 60 + m, formatted: `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}` };
+        }
+
+        function handleTimeBlur(input) {
+            const res = parseTimeToMinutes(input.value);
+            if (res) {
+                input.value = res.formatted;
+            }
+            calculateTotals();
+            triggerAutoSave();
+        }
+
+        function formatAndCalcFinancials(input) {
+            calculateFinancials();
+        }
+
+        function ensureOptionExists(select, value) {
+            if (!value || !select) return;
+            let exists = false;
+            for (let i = 0; i < select.options.length; i++) {
+                if (select.options[i].value === value) {
+                    exists = true;
+                    break;
+                }
+            }
+            if (!exists) {
+                const opt = document.createElement('option');
+                opt.value = value;
+                opt.textContent = value;
+                select.appendChild(opt);
+            }
+        }
+
+        function syncAllocationNames() {
+            const format = parseInt(document.getElementById('report-format').value);
+            const itemName1 = document.getElementById('item-name-1').value || '';
+            
+            if (format === 1) {
+                const selectOptions = ['日数', '件数', '日当'];
+                const matchedOption = selectOptions.includes(itemName1) ? itemName1 : '日数';
+                const evalTypeSelect1 = document.getElementById('f1-eval-type-1');
+                const evalTypeSelect2 = document.getElementById('f1-eval-type-17');
+                if (evalTypeSelect1) evalTypeSelect1.value = matchedOption;
+                if (evalTypeSelect2) evalTypeSelect2.value = matchedOption;
+            } else if (format === 2) {
+                const name2 = document.getElementById('item-name-2') ? document.getElementById('item-name-2').value : '数値2';
+                const h1_1 = document.getElementById('f2-h1-col1');
+                const h2_1 = document.getElementById('f2-h2-col1');
+                const h1_2 = document.getElementById('f2-h1-col2');
+                const h2_2 = document.getElementById('f2-h2-col2');
+                if (h1_1) h1_1.value = itemName1 || '数値1';
+                if (h2_1) h2_1.value = itemName1 || '数値1';
+                if (h1_2) h1_2.value = name2;
+                if (h2_2) h2_2.value = name2;
+            } else if (format === 3) {
+                const select1 = document.getElementById('f3-eval-type-1');
+                const select2 = document.getElementById('f3-eval-type-2');
+                [select1, select2].forEach(select => {
+                    if (select) {
+                        ensureOptionExists(select, itemName1);
+                        select.value = itemName1;
+                    }
+                });
+            } else if (format === 4) {
+                const select1 = document.getElementById('f4-eval-type-1');
+                const select2 = document.getElementById('f4-eval-type-2');
+                [select1, select2].forEach(select => {
+                    if (select) {
+                        ensureOptionExists(select, itemName1);
+                        select.value = itemName1;
+                    }
+                });
+            }
+            calculateTotals();
+        }
+
+        function handleFormat1EvalTypeChange(source) {
+            const val = source.value;
+            const evalType1 = document.getElementById('f1-eval-type-1');
+            const evalType17 = document.getElementById('f1-eval-type-17');
+            if (evalType1) evalType1.value = val;
+            if (evalType17) evalType17.value = val;
+
+            const itemName1 = document.getElementById('item-name-1');
+            if (itemName1) {
+                itemName1.value = val;
+            }
+            calculateTotals();
+            triggerAutoSave();
+        }
+
+        function handleFormat3EvalTypeChange(source) {
+            const val = source ? source.value : '';
+            if (!val) return;
+            const evalType1 = document.getElementById('f3-eval-type-1');
+            const evalType2 = document.getElementById('f3-eval-type-2');
+            if (evalType1) evalType1.value = val;
+            if (evalType2) evalType2.value = val;
+
+            const itemName1 = document.getElementById('item-name-1');
+            if (itemName1 && !document.getElementById('is-locked-checkbox').checked) {
+                itemName1.value = val;
+            }
+            calculateTotals();
+            triggerAutoSave();
+        }
+
+        function handleFormat4EvalTypeChange(source) {
+            const val = source ? source.value : '';
+            if (!val) return;
+            const evalType1 = document.getElementById('f4-eval-type-1');
+            const evalType2 = document.getElementById('f4-eval-type-2');
+            if (evalType1) evalType1.value = val;
+            if (evalType2) evalType2.value = val;
+
+            const itemName1 = document.getElementById('item-name-1');
+            if (itemName1 && !document.getElementById('is-locked-checkbox').checked) {
+                itemName1.value = val;
+            }
+            calculateTotals();
+            triggerAutoSave();
+        }
+
+        function handleFormat2HeaderInput(colIdx, inputEl) {
+            const val = inputEl.value;
+            const h1 = document.getElementById(`f2-h1-col${colIdx}`);
+            const h2 = document.getElementById(`f2-h2-col${colIdx}`);
+            if (h1) h1.value = val;
+            if (h2) h2.value = val;
+
+            const targetInput = document.getElementById(`item-name-${colIdx}`);
+            if (targetInput) targetInput.value = val;
+            triggerAutoSave();
+        }
+
+        function handleTableHeaderInput(formatType, index, inputEl) {
+            const val = inputEl.value;
+            if (formatType === 1) {
+                const target = document.getElementById(`f1-h2-${index}`);
+                if (target) target.value = val;
+            } else if (formatType === 2) {
+                handleFormat2HeaderInput(index, inputEl);
+            }
+            triggerAutoSave();
+        }
+
+        function calculateTotals() {
+            const format = parseInt(document.getElementById('report-format').value);
+            
+            if (format === 1) {
+                const evalType = document.getElementById('f1-eval-type-1') ? document.getElementById('f1-eval-type-1').value : '日数';
+                for (let i = 1; i <= 31; i++) {
+                    const textInput = document.getElementById(`f1-text-${i}`);
+                    const evalField = document.getElementById(`f1-eval-${i}`);
+                    
+                    if (textInput && evalField) {
+                        const hasText = textInput.value.trim() !== '';
+                        if (hasText) {
+                            if (!evalField.value || evalField.dataset.autoGenerated === "true") {
+                                evalField.value = '1';
+                                evalField.dataset.autoGenerated = "true";
+                            }
+                        } else {
+                            if (evalField.dataset.autoGenerated === "true") {
+                                evalField.value = '';
+                                delete evalField.dataset.autoGenerated;
+                            }
+                        }
+                    }
+                }
+            } else if (format === 2) {
+                for (let i = 1; i <= 31; i++) {
+                    const rowN1 = document.getElementById(`f2-n1-${i}`);
+                    const rowN2 = document.getElementById(`f2-n2-${i}`);
+                    const evalField = document.getElementById(`f2-eval-${i}`);
+                    
+                    if (rowN1 && rowN2 && evalField) {
+                        const v1 = parseNum(rowN1.value);
+                        const v2 = parseNum(rowN2.value);
+                        const has1 = rowN1.value.trim() !== '';
+                        const has2 = rowN2.value.trim() !== '';
+                        
+                        if (has1 || has2) {
+                            evalField.value = formatNumber(v1 + v2);
+                        } else {
+                            evalField.value = '';
+                        }
+                    }
+                }
+
+                for (let colIdx = 1; colIdx <= 2; colIdx++) {
+                    let colSum = 0;
+                    let colHasNum = false;
+                    document.querySelectorAll(`.entry-f2-c${colIdx}`).forEach(input => {
+                        const v = parseNum(input.value);
+                        if (input.value.trim() !== '') {
+                            colSum += v;
+                            colHasNum = true;
+                        }
+                    });
+                    const totalField = document.getElementById(`f2-col-total-${colIdx}`);
+                    if (totalField) {
+                        totalField.value = colHasNum ? formatNumber(colSum) : '';
+                    }
+
+                    const countField = document.getElementById(`p${colIdx}-count`);
+                    if (countField) {
+                        countField.value = colHasNum ? colSum : '';
+                    }
+                }
+            } else if (format === 3) {
+                const evalTypeEl = document.getElementById('f3-eval-type-1');
+                const evalType = evalTypeEl ? evalTypeEl.value : '時間';
+                
+                for (let i = 1; i <= 31; i++) {
+                    const startInput = document.getElementById(`f3-start-${i}`);
+                    const endInput = document.getElementById(`f3-end-${i}`);
+                    const evalField = document.getElementById(`f3-eval-${i}`);
+
+                    if (startInput && endInput && evalField) {
+                        const sParsed = parseTimeToMinutes(startInput.value);
+                        const eParsed = parseTimeToMinutes(endInput.value);
+
+                        if (evalType === '時間') {
+                            if (sParsed && eParsed) {
+                                let diffMin = eParsed.minutes - sParsed.minutes;
+                                if (diffMin < 0) diffMin += 24 * 60;
+                                
+                                let hours = diffMin / 60;
+                                if (hours > 8) {
+                                    hours -= 1.0;
+                                } else if (hours >= 6 && hours <= 8) {
+                                    hours -= 0.75;
+                                }
+                                if (hours < 0) hours = 0;
+                                evalField.value = hours.toFixed(2);
+                            } else {
+                                evalField.value = '';
+                            }
+                        } else {
+                            if (sParsed || eParsed) {
+                                evalField.value = '1';
+                            } else {
+                                evalField.value = '';
+                            }
+                        }
+                    }
+                }
+
+                for (let colIdx = 1; colIdx <= 2; colIdx++) {
+                    let totalMinutes = 0;
+                    let hasTime = false;
+                    document.querySelectorAll(`.entry-f3-c${colIdx}`).forEach(input => {
+                        const parsed = parseTimeToMinutes(input.value);
+                        if (parsed) {
+                            totalMinutes += parsed.minutes;
+                            hasTime = true;
+                        }
+                    });
+                    const totalField = document.getElementById(`f3-col-total-${colIdx}`);
+                    if (totalField) {
+                        if (hasTime) {
+                            const th = Math.floor(totalMinutes / 60);
+                            const tm = totalMinutes % 60;
+                            totalField.value = `${th}:${tm.toString().padStart(2, '0')}`;
+                        } else {
+                            totalField.value = '';
+                        }
+                    }
+                }
+            } else if (format === 4) {
+                const evalTypeEl = document.getElementById('f4-eval-type-1');
+                const evalType = evalTypeEl ? evalTypeEl.value : '時間';
+
+                for (let i = 1; i <= 31; i++) {
+                    const s1Input = document.getElementById(`f4-s1-${i}`);
+                    const e1Input = document.getElementById(`f4-e1-${i}`);
+                    const s2Input = document.getElementById(`f4-s2-${i}`);
+                    const e2Input = document.getElementById(`f4-e2-${i}`);
+                    const evalField = document.getElementById(`f4-eval-${i}`);
+
+                    if (s1Input && e1Input && s2Input && e2Input && evalField) {
+                        const pS1 = parseTimeToMinutes(s1Input.value);
+                        const pE1 = parseTimeToMinutes(e1Input.value);
+                        const pS2 = parseTimeToMinutes(s2Input.value);
+                        const pE2 = parseTimeToMinutes(e2Input.value);
+
+                        if (evalType === '時間') {
+                            let totalMinutes = 0;
+                            let hasAny = false;
+
+                            if (pS1 && pE1) {
+                                let m1 = pE1.minutes - pS1.minutes;
+                                if (m1 < 0) m1 += 24 * 60;
+                                totalMinutes += m1;
+                                hasAny = true;
+                            }
+
+                            if (pS2 && pE2) {
+                                let m2 = pE2.minutes - pS2.minutes;
+                                if (m2 < 0) m2 += 24 * 60;
+                                totalMinutes += m2;
+                                hasAny = true;
+                            }
+
+                            if (hasAny) {
+                                let hours = totalMinutes / 60;
+                                evalField.value = hours.toFixed(2);
+                            } else {
+                                evalField.value = '';
+                            }
+                        } else {
+                            if (pS1 || pE1 || pS2 || pE2) {
+                                evalField.value = '1';
+                            } else {
+                                evalField.value = '';
+                            }
+                        }
+                    }
+                }
+
+                for (let colIdx = 1; colIdx <= 4; colIdx++) {
+                    let totalMinutes = 0;
+                    let hasTime = false;
+                    document.querySelectorAll(`.entry-f4-c${colIdx}`).forEach(input => {
+                        const parsed = parseTimeToMinutes(input.value);
+                        if (parsed) {
+                            totalMinutes += parsed.minutes;
+                            hasTime = true;
+                        }
+                    });
+                    const totalField = document.getElementById(`f4-col-total-${colIdx}`);
+                    if (totalField) {
+                        if (hasTime) {
+                            const th = Math.floor(totalMinutes / 60);
+                            const tm = totalMinutes % 60;
+                            totalField.value = `${th}:${tm.toString().padStart(2, '0')}`;
+                        } else {
+                            totalField.value = '';
+                        }
+                    }
+                }
+            }
+
+            const evalInputs = document.querySelectorAll('.eval-input');
+            let grandSum = 0;
+            let hasValidNumber = false;
+
+            evalInputs.forEach(input => {
+                const val = parseNum(input.value);
+                if (input.value.trim() !== '') {
+                    grandSum += val;
+                    hasValidNumber = true;
+                }
+            });
+
+            const grandTotalEvalEl = document.getElementById('grand-total-eval');
+            if (grandTotalEvalEl) {
+                const evalType = format === 1 ? (document.getElementById('f1-eval-type-1') ? document.getElementById('f1-eval-type-1').value : '日数') :
+                                 format === 3 ? (document.getElementById('f3-eval-type-1') ? document.getElementById('f3-eval-type-1').value : '時間') :
+                                 format === 4 ? (document.getElementById('f4-eval-type-1') ? document.getElementById('f4-eval-type-1').value : '時間') :
+                                 format === 2 ? '件数' : '時間';
+                if (hasValidNumber && grandSum !== 0) {
+                    grandTotalEvalEl.value = (evalType === '時間') ? grandSum.toFixed(2) : grandSum.toString();
+                } else {
+                    grandTotalEvalEl.value = '';
+                }
+            }
+
+            if (format === 1 || format === 3 || format === 4) {
+                const p1Count = document.getElementById('p1-count');
+                const evalType = format === 1 ? (document.getElementById('f1-eval-type-1') ? document.getElementById('f1-eval-type-1').value : '日数') :
+                                 format === 3 ? (document.getElementById('f3-eval-type-1') ? document.getElementById('f3-eval-type-1').value : '時間') :
+                                 format === 4 ? (document.getElementById('f4-eval-type-1') ? document.getElementById('f4-eval-type-1').value : '時間') : '時間';
+                if (p1Count) {
+                    p1Count.value = hasValidNumber && grandSum !== 0 ? ((evalType === '時間') ? grandSum.toFixed(2) : grandSum.toString()) : '';
+                }
+            } else if (format === 2) {
+                let colSum1 = 0;
+                let hasCol1 = false;
+                document.querySelectorAll('.entry-f2-c1').forEach(input => {
+                    const v = parseNum(input.value);
+                    if (input.value.trim() !== '') {
+                        colSum1 += v;
+                        hasCol1 = true;
+                    }
+                });
+                const p1Count = document.getElementById('p1-count');
+                if (p1Count) p1Count.value = hasCol1 ? colSum1 : '';
+
+                let colSum2 = 0;
+                let hasCol2 = false;
+                document.querySelectorAll('.entry-f2-c2').forEach(input => {
+                    const v = parseNum(input.value);
+                    if (input.value.trim() !== '') {
+                        colSum2 += v;
+                        hasCol2 = true;
+                    }
+                });
+                const p2Count = document.getElementById('p2-count');
+                if (p2Count) p2Count.value = hasCol2 ? colSum2 : '';
+            }
+
+            calculateFinancials();
+        }
+
+        function calculateFinancials() {
+            for (let i = 1; i <= 3; i++) {
+                const price = parseNum(document.getElementById(`p${i}-price`).value);
+                const count = parseNum(document.getElementById(`p${i}-count`).value);
+                const total = price * count;
+                document.getElementById(`p${i}-total`).value = total === 0 ? '' : formatNumber(total);
+            }
+
+            const t1 = parseNum(document.getElementById('p1-total').value);
+            const t2 = parseNum(document.getElementById('p2-total').value);
+            const t3 = parseNum(document.getElementById('p3-total').value);
+            const deduction = parseNum(document.getElementById('item-deduction').value);
+            const advance = parseNum(document.getElementById('item-advance').value);
+
+            const subtotal = t1 + t2 + t3 + deduction + advance;
+            document.getElementById('subtotal-amount').value = subtotal === 0 ? '' : formatNumber(subtotal);
+
+            const material = parseNum(document.getElementById('item-material').value);
+            const admin = parseNum(document.getElementById('item-admin').value);
+
+            const grandTotal = subtotal + material + admin;
+            document.getElementById('grand-total-amount').value = grandTotal === 0 ? '' : formatNumber(grandTotal);
+        }
+
+        function updateCalendar() {
+            const year = parseInt(document.getElementById('report-year').value);
+            const month = parseInt(document.getElementById('report-month').value);
+            const format = parseInt(document.getElementById('report-format').value);
+            const headerRow = document.getElementById('table-header-row');
+            const tbody = document.getElementById('calendar-body');
+            tbody.innerHTML = '';
+
+            const rowAllocation2 = document.getElementById('row-allocation-2');
+            if (rowAllocation2) {
+                rowAllocation2.style.display = (format === 2) ? 'flex' : 'none';
+            }
+
+            const itemName1Input = document.getElementById('item-name-1');
+            if (itemName1Input && !document.getElementById('is-locked-checkbox').checked) {
+                if (format === 2) itemName1Input.value = '数値1';
+                else if (format === 3 || format === 4) {
+                    if (!itemName1Input.value || itemName1Input.value === '数値1' || itemName1Input.value === '日数') {
+                        itemName1Input.value = '時間';
+                    }
+                }
+                else if (format === 1) {
+                    if (!itemName1Input.value || itemName1Input.value === '数値1' || itemName1Input.value === '時間') {
+                        itemName1Input.value = '日数';
+                    }
+                }
+            }
+
+            if (format === 1) {
+                const currentEvalType = itemName1Input ? itemName1Input.value : '日数';
+                headerRow.innerHTML = `
+                    <th class="col-day">日</th>
+                    <th class="col-wday">曜日</th>
+                    <th style="width: 32%;"><input type="text" id="f1-h1-1" class="text-center font-bold" value="摘要" oninput="handleTableHeaderInput(1, 1, this)"></th>
+                    <th class="col-eval">
+                        <select id="f1-eval-type-1" class="print-select text-center font-bold text-xs bg-transparent cursor-pointer w-full" onchange="handleFormat1EvalTypeChange(this)">
+                            <option value="日数" ${currentEvalType === '日数' ? 'selected' : ''}>日数</option>
+                            <option value="件数" ${currentEvalType === '件数' ? 'selected' : ''}>件数</option>
+                            <option value="日当" ${currentEvalType === '日当' ? 'selected' : ''}>日当</option>
+                        </select>
+                    </th>
+                    <th class="col-day">日</th>
+                    <th class="col-wday">曜日</th>
+                    <th style="width: 30%;"><input type="text" id="f1-h2-1" class="text-center font-bold" value="摘要" oninput="handleTableHeaderInput(1, 1, this)"></th>
+                    <th class="col-eval">
+                        <select id="f1-eval-type-17" class="print-select text-center font-bold text-xs bg-transparent cursor-pointer w-full" onchange="handleFormat1EvalTypeChange(this)">
+                            <option value="日数" ${currentEvalType === '日数' ? 'selected' : ''}>日数</option>
+                            <option value="件数" ${currentEvalType === '件数' ? 'selected' : ''}>件数</option>
+                            <option value="日当" ${currentEvalType === '日当' ? 'selected' : ''}>日当</option>
+                        </select>
+                    </th>
+                `;
+            } else if (format === 2) {
+                const currentName1 = itemName1Input ? itemName1Input.value : '数値1';
+                const currentName2 = document.getElementById('item-name-2') ? document.getElementById('item-name-2').value : '数値2';
+                headerRow.innerHTML = `
+                    <th class="col-day">日</th>
+                    <th class="col-wday">曜日</th>
+                    <th style="width: 15%;"><input type="text" id="f2-h1-col1" class="text-center font-bold" value="${currentName1}" oninput="handleFormat2HeaderInput(1, this)"></th>
+                    <th style="width: 15%;"><input type="text" id="f2-h1-col2" class="text-center font-bold" value="${currentName2}" oninput="handleFormat2HeaderInput(2, this)"></th>
+                    <th class="col-eval"><input type="text" class="text-center font-bold" value="件数" readonly style="background:transparent;" tabindex="-1"></th>
+                    <th class="col-day">日</th>
+                    <th class="col-wday">曜日</th>
+                    <th style="width: 15%;"><input type="text" id="f2-h2-col1" class="text-center font-bold" value="${currentName1}" oninput="handleFormat2HeaderInput(1, this)"></th>
+                    <th style="width: 15%;"><input type="text" id="f2-h2-col2" class="text-center font-bold" value="${currentName2}" oninput="handleFormat2HeaderInput(2, this)"></th>
+                    <th class="col-eval"><input type="text" class="text-center font-bold" value="件数" readonly style="background:transparent;" tabindex="-1"></th>
+                `;
+            } else if (format === 3) {
+                const currentEvalType = itemName1Input ? itemName1Input.value : '時間';
+                headerRow.innerHTML = `
+                    <th class="col-day">日</th>
+                    <th class="col-wday">曜日</th>
+                    <th style="width: 15%;"><input type="text" class="text-center font-bold" value="開始時間" readonly style="background:transparent;" tabindex="-1"></th>
+                    <th style="width: 15%;"><input type="text" class="text-center font-bold" value="終了時間" readonly style="background:transparent;" tabindex="-1"></th>
+                    <th class="col-eval">
+                        <select id="f3-eval-type-1" class="print-select text-center font-bold text-xs bg-transparent cursor-pointer w-full" onchange="handleFormat3EvalTypeChange(this)">
+                            <option value="時間" ${currentEvalType === '時間' ? 'selected' : ''}>時間</option>
+                            <option value="日数" ${currentEvalType === '日数' ? 'selected' : ''}>日数</option>
+                        </select>
+                    </th>
+                    <th class="col-day">日</th>
+                    <th class="col-wday">曜日</th>
+                    <th style="width: 15%;"><input type="text" class="text-center font-bold" value="開始時間" readonly style="background:transparent;" tabindex="-1"></th>
+                    <th style="width: 15%;"><input type="text" class="text-center font-bold" value="終了時間" readonly style="background:transparent;" tabindex="-1"></th>
+                    <th class="col-eval">
+                        <select id="f3-eval-type-2" class="print-select text-center font-bold text-xs bg-transparent cursor-pointer w-full" onchange="handleFormat3EvalTypeChange(this)">
+                            <option value="時間" ${currentEvalType === '時間' ? 'selected' : ''}>時間</option>
+                            <option value="日数" ${currentEvalType === '日数' ? 'selected' : ''}>日数</option>
+                        </select>
+                    </th>
+                `;
+                const s1 = document.getElementById('f3-eval-type-1');
+                const s2 = document.getElementById('f3-eval-type-2');
+                ensureOptionExists(s1, currentEvalType);
+                ensureOptionExists(s2, currentEvalType);
+                if (s1) s1.value = currentEvalType;
+                if (s2) s2.value = currentEvalType;
+            } else if (format === 4) {
+                const currentEvalType = itemName1Input ? itemName1Input.value : '時間';
+                headerRow.innerHTML = `
+                    <th class="col-day">日</th>
+                    <th class="col-wday">曜日</th>
+                    <th style="width: 7.5%;"><input type="text" class="text-center font-bold" value="開始1" readonly style="background:transparent;" tabindex="-1"></th>
+                    <th style="width: 7.5%;"><input type="text" class="text-center font-bold" value="終了1" readonly style="background:transparent;" tabindex="-1"></th>
+                    <th style="width: 7.5%;"><input type="text" class="text-center font-bold" value="開始2" readonly style="background:transparent;" tabindex="-1"></th>
+                    <th style="width: 7.5%;"><input type="text" class="text-center font-bold" value="終了2" readonly style="background:transparent;" tabindex="-1"></th>
+                    <th class="col-eval">
+                        <select id="f4-eval-type-1" class="print-select text-center font-bold text-xs bg-transparent cursor-pointer w-full" onchange="handleFormat4EvalTypeChange(this)">
+                            <option value="時間" ${currentEvalType === '時間' ? 'selected' : ''}>時間</option>
+                            <option value="日数" ${currentEvalType === '日数' ? 'selected' : ''}>日数</option>
+                        </select>
+                    </th>
+                    <th class="col-day">日</th>
+                    <th class="col-wday">曜日</th>
+                    <th style="width: 7.5%;"><input type="text" class="text-center font-bold" value="開始1" readonly style="background:transparent;" tabindex="-1"></th>
+                    <th style="width: 7.5%;"><input type="text" class="text-center font-bold" value="終了1" readonly style="background:transparent;" tabindex="-1"></th>
+                    <th style="width: 7.5%;"><input type="text" class="text-center font-bold" value="開始2" readonly style="background:transparent;" tabindex="-1"></th>
+                    <th style="width: 7.5%;"><input type="text" class="text-center font-bold" value="終了2" readonly style="background:transparent;" tabindex="-1"></th>
+                    <th class="col-eval">
+                        <select id="f4-eval-type-2" class="print-select text-center font-bold text-xs bg-transparent cursor-pointer w-full" onchange="handleFormat4EvalTypeChange(this)">
+                            <option value="時間" ${currentEvalType === '時間' ? 'selected' : ''}>時間</option>
+                            <option value="日数" ${currentEvalType === '日数' ? 'selected' : ''}>日数</option>
+                        </select>
+                    </th>
+                `;
+                const s1 = document.getElementById('f4-eval-type-1');
+                const s2 = document.getElementById('f4-eval-type-2');
+                ensureOptionExists(s1, currentEvalType);
+                ensureOptionExists(s2, currentEvalType);
+                if (s1) s1.value = currentEvalType;
+                if (s2) s2.value = currentEvalType;
+            }
+
+            const daysInMonth = new Date(year, month, 0).getDate();
+
+            for (let i = 1; i <= 15; i++) {
+                const i2 = i + 16;
+                const d1 = i;
+                const isValid1 = d1 <= daysInMonth;
+                const w1 = isValid1 ? weekdays[new Date(year, month - 1, d1).getDay()] : '';
+                
+                const d2 = i2 <= daysInMonth ? i2 : null;
+                const isValid2 = d2 !== null;
+                const w2 = isValid2 ? weekdays[new Date(year, month - 1, d2).getDay()] : '';
+
+                const tr = document.createElement('tr');
+                if (format === 1) {
+                    tr.innerHTML = `
+                        <td class="text-center font-bold bg-slate-50 col-day">${isValid1 ? d1 : ''}</td>
+                        <td class="text-center col-wday"><input type="text" class="text-center" value="${w1}" ${!isValid1 ? 'readonly style="background:transparent;"' : ''}></td>
+                        <td><input type="text" id="f1-text-${d1}" oninput="calculateTotals(); triggerAutoSave();" ${!isValid1 ? 'readonly style="background:transparent;"' : ''}></td>
+                        <td class="col-eval"><input type="text" id="f1-eval-${d1}" class="text-center eval-input" oninput="calculateTotals()" ${!isValid1 ? 'readonly style="background:transparent;"' : ''}></td>
+                        <td class="text-center font-bold bg-slate-50 col-day">${isValid2 ? d2 : ''}</td>
+                        <td class="text-center col-wday"><input type="text" class="text-center" value="${w2}" ${!isValid2 ? 'readonly style="background:transparent;"' : ''}></td>
+                        <td><input type="text" id="f1-text-${d2}" oninput="calculateTotals(); triggerAutoSave();" ${!isValid2 ? 'readonly style="background:transparent;"' : ''}></td>
+                        <td class="col-eval"><input type="text" id="f1-eval-${d2}" class="text-center eval-input" oninput="calculateTotals()" ${!isValid2 ? 'readonly style="background:transparent;"' : ''}></td>
+                    `;
+                } else if (format === 2) {
+                    tr.innerHTML = `
+                        <td class="text-center font-bold bg-slate-50 text-[11px] col-day">${isValid1 ? d1 : ''}</td>
+                        <td class="text-center text-[11px] col-wday"><input type="text" class="text-center" value="${w1}" ${!isValid1 ? 'readonly style="background:transparent;"' : ''}></td>
+                        <td><input type="text" id="f2-n1-${d1}" class="text-right entry-f2-c1" oninput="calculateTotals(); triggerAutoSave();" onblur="formatInput(this)" ${!isValid1 ? 'readonly style="background:transparent;"' : ''}></td>
+                        <td><input type="text" id="f2-n2-${d1}" class="text-right entry-f2-c2" oninput="calculateTotals(); triggerAutoSave();" onblur="formatInput(this)" ${!isValid1 ? 'readonly style="background:transparent;"' : ''}></td>
+                        <td class="col-eval"><input type="text" id="f2-eval-${d1}" class="text-center font-medium bg-slate-50 text-[11px] eval-input" readonly ${!isValid1 ? 'style="background:transparent;"' : ''}></td>
+                        <td class="text-center font-bold bg-slate-50 text-[11px] col-day">${isValid2 ? d2 : ''}</td>
+                        <td class="text-center text-[11px] col-wday"><input type="text" class="text-center" value="${w2}" ${!isValid2 ? 'readonly style="background:transparent;"' : ''}></td>
+                        <td><input type="text" id="f2-n1-${d2}" class="text-right entry-f2-c1" oninput="calculateTotals(); triggerAutoSave();" onblur="formatInput(this)" ${!isValid2 ? 'readonly style="background:transparent;"' : ''}></td>
+                        <td><input type="text" id="f2-n2-${d2}" class="text-right entry-f2-c2" oninput="calculateTotals(); triggerAutoSave();" onblur="formatInput(this)" ${!isValid2 ? 'readonly style="background:transparent;"' : ''}></td>
+                        <td class="col-eval"><input type="text" id="f2-eval-${d2}" class="text-center font-medium bg-slate-50 text-[11px] eval-input" readonly ${!isValid2 ? 'style="background:transparent;"' : ''}></td>
+                    `;
+                } else if (format === 3) {
+                    tr.innerHTML = `
+                        <td class="text-center font-bold bg-slate-50 text-[11px] col-day">${isValid1 ? d1 : ''}</td>
+                        <td class="text-center text-[11px] col-wday"><input type="text" class="text-center" value="${w1}" ${!isValid1 ? 'readonly style="background:transparent;"' : ''}></td>
+                        <td><input type="text" id="f3-start-${d1}" placeholder="09:00" class="text-center entry-f3-c1" oninput="calculateTotals(); triggerAutoSave();" onblur="handleTimeBlur(this)" ${!isValid1 ? 'readonly style="background:transparent;"' : ''}></td>
+                        <td><input type="text" id="f3-end-${d1}" placeholder="17:00" class="text-center entry-f3-c2" oninput="calculateTotals(); triggerAutoSave();" onblur="handleTimeBlur(this)" ${!isValid1 ? 'readonly style="background:transparent;"' : ''}></td>
+                        <td class="col-eval"><input type="text" id="f3-eval-${d1}" class="text-center font-medium bg-slate-50 text-[11px] eval-input" readonly ${!isValid1 ? 'style="background:transparent;"' : ''}></td>
+                        <td class="text-center font-bold bg-slate-50 text-[11px] col-day">${isValid2 ? d2 : ''}</td>
+                        <td class="text-center text-[11px] col-wday"><input type="text" class="text-center" value="${w2}" ${!isValid2 ? 'readonly style="background:transparent;"' : ''}></td>
+                        <td><input type="text" id="f3-start-${d2}" placeholder="09:00" class="text-center entry-f3-c1" oninput="calculateTotals(); triggerAutoSave();" onblur="handleTimeBlur(this)" ${!isValid2 ? 'readonly style="background:transparent;"' : ''}></td>
+                        <td><input type="text" id="f3-end-${d2}" placeholder="17:00" class="text-center entry-f3-c2" oninput="calculateTotals(); triggerAutoSave();" onblur="handleTimeBlur(this)" ${!isValid2 ? 'readonly style="background:transparent;"' : ''}></td>
+                        <td class="col-eval"><input type="text" id="f3-eval-${d2}" class="text-center font-medium bg-slate-50 text-[11px] eval-input" readonly ${!isValid2 ? 'style="background:transparent;"' : ''}></td>
+                    `;
+                } else if (format === 4) {
+                    tr.innerHTML = `
+                        <td class="text-center font-bold bg-slate-50 text-[10px] col-day">${isValid1 ? d1 : ''}</td>
+                        <td class="text-center text-[10px] col-wday"><input type="text" class="text-center" value="${w1}" ${!isValid1 ? 'readonly style="background:transparent;"' : ''}></td>
+                        <td><input type="text" id="f4-s1-${d1}" placeholder="09:00" class="text-center entry-f4-c1 text-xs" oninput="calculateTotals(); triggerAutoSave();" onblur="handleTimeBlur(this)" ${!isValid1 ? 'readonly style="background:transparent;"' : ''}></td>
+                        <td><input type="text" id="f4-e1-${d1}" placeholder="12:00" class="text-center entry-f4-c2 text-xs" oninput="calculateTotals(); triggerAutoSave();" onblur="handleTimeBlur(this)" ${!isValid1 ? 'readonly style="background:transparent;"' : ''}></td>
+                        <td><input type="text" id="f4-s2-${d1}" placeholder="13:00" class="text-center entry-f4-c3 text-xs" oninput="calculateTotals(); triggerAutoSave();" onblur="handleTimeBlur(this)" ${!isValid1 ? 'readonly style="background:transparent;"' : ''}></td>
+                        <td><input type="text" id="f4-e2-${d1}" placeholder="17:00" class="text-center entry-f4-c4 text-xs" oninput="calculateTotals(); triggerAutoSave();" onblur="handleTimeBlur(this)" ${!isValid1 ? 'readonly style="background:transparent;"' : ''}></td>
+                        <td class="col-eval"><input type="text" id="f4-eval-${d1}" class="text-center font-medium bg-slate-50 text-[10px] eval-input" readonly ${!isValid1 ? 'style="background:transparent;"' : ''}></td>
+                        <td class="text-center font-bold bg-slate-50 text-[10px] col-day">${isValid2 ? d2 : ''}</td>
+                        <td class="text-center text-[10px] col-wday"><input type="text" class="text-center" value="${w2}" ${!isValid2 ? 'readonly style="background:transparent;"' : ''}></td>
+                        <td><input type="text" id="f4-s1-${d2}" placeholder="09:00" class="text-center entry-f4-c1 text-xs" oninput="calculateTotals(); triggerAutoSave();" onblur="handleTimeBlur(this)" ${!isValid2 ? 'readonly style="background:transparent;"' : ''}></td>
+                        <td><input type="text" id="f4-e1-${d2}" placeholder="12:00" class="text-center entry-f4-c2 text-xs" oninput="calculateTotals(); triggerAutoSave();" onblur="handleTimeBlur(this)" ${!isValid2 ? 'readonly style="background:transparent;"' : ''}></td>
+                        <td><input type="text" id="f4-s2-${d2}" placeholder="13:00" class="text-center entry-f4-c3 text-xs" oninput="calculateTotals(); triggerAutoSave();" onblur="handleTimeBlur(this)" ${!isValid2 ? 'readonly style="background:transparent;"' : ''}></td>
+                        <td><input type="text" id="f4-e2-${d2}" placeholder="17:00" class="text-center entry-f4-c4 text-xs" oninput="calculateTotals(); triggerAutoSave();" onblur="handleTimeBlur(this)" ${!isValid2 ? 'readonly style="background:transparent;"' : ''}></td>
+                        <td class="col-eval"><input type="text" id="f4-eval-${d2}" class="text-center font-medium bg-slate-50 text-[10px] eval-input" readonly ${!isValid2 ? 'style="background:transparent;"' : ''}></td>
+                    `;
+                }
+                tbody.appendChild(tr);
+            }
+
+            const tr16 = document.createElement('tr');
+            tbody.appendChild(tr16);
+            buildTotalRow(format, tr16, year, month);
+            applyLockStateToElements(); // ロック状態の適用
+        }
+
+        function buildTotalRow(format, tr16, year, month) {
+            const daysInMonth = new Date(year, month, 0).getDate();
+            const d1_16 = 16;
+            const isValid1_16 = d1_16 <= daysInMonth;
+            const w1_16 = isValid1_16 ? weekdays[new Date(year, month - 1, d1_16).getDay()] : '';
+
+            if (format === 1) {
+                tr16.innerHTML = `
+                    <td class="text-center font-bold bg-slate-50 col-day">${isValid1_16 ? d1_16 : ''}</td>
+                    <td class="text-center col-wday"><input type="text" class="text-center" value="${w1_16}" ${!isValid1_16 ? 'readonly style="background:transparent;"' : ''}></td>
+                    <td><input type="text" id="f1-text-${d1_16}" oninput="calculateTotals(); triggerAutoSave();" ${!isValid1_16 ? 'readonly style="background:transparent;"' : ''}></td>
+                    <td class="col-eval"><input type="text" id="f1-eval-${d1_16}" class="text-center eval-input" oninput="calculateTotals()" ${!isValid1_16 ? 'readonly style="background:transparent;"' : ''}></td>
+                    <td colspan="2" class="text-center font-bold bg-slate-100">合計</td>
+                    <td><input type="text" readonly style="background:transparent;"></td>
+                    <td class="col-eval"><input type="text" id="grand-total-eval" class="text-center font-bold bg-slate-50" readonly placeholder=""></td>
+                `;
+            } else if (format === 2) {
+                tr16.innerHTML = `
+                    <td class="text-center font-bold bg-slate-50 text-[11px] col-day">${isValid1_16 ? d1_16 : ''}</td>
+                    <td class="text-center text-[11px] col-wday"><input type="text" class="text-center" value="${w1_16}" ${!isValid1_16 ? 'readonly style="background:transparent;"' : ''}></td>
+                    <td><input type="text" id="f2-n1-${d1_16}" class="text-right entry-f2-c1" oninput="calculateTotals(); triggerAutoSave();" onblur="formatInput(this)" ${!isValid1_16 ? 'readonly style="background:transparent;"' : ''}></td>
+                    <td><input type="text" id="f2-n2-${d1_16}" class="text-right entry-f2-c2" oninput="calculateTotals(); triggerAutoSave();" onblur="formatInput(this)" ${!isValid1_16 ? 'readonly style="background:transparent;"' : ''}></td>
+                    <td class="col-eval"><input type="text" id="f2-eval-${d1_16}" class="text-center font-medium bg-slate-50 text-[11px] eval-input" readonly ${!isValid1_16 ? 'style="background:transparent;"' : ''}></td>
+                    <td colspan="2" class="text-center font-bold bg-slate-100 text-[11px]">合計</td>
+                    <td><input type="text" id="f2-col-total-1" class="text-right font-bold bg-slate-50" readonly placeholder=""></td>
+                    <td><input type="text" id="f2-col-total-2" class="text-right font-bold bg-slate-50" readonly placeholder=""></td>
+                    <td class="col-eval"><input type="text" id="grand-total-eval" class="text-center font-bold bg-slate-50" readonly placeholder=""></td>
+                `;
+            } else if (format === 3) {
+                tr16.innerHTML = `
+                    <td class="text-center font-bold bg-slate-50 text-[11px] col-day">${isValid1_16 ? d1_16 : ''}</td>
+                    <td class="text-center text-[11px] col-wday"><input type="text" class="text-center" value="${w1_16}" ${!isValid1_16 ? 'readonly style="background:transparent;"' : ''}></td>
+                    <td><input type="text" id="f3-start-${d1_16}" placeholder="09:00" class="text-center entry-f3-c1" oninput="calculateTotals(); triggerAutoSave();" onblur="handleTimeBlur(this)" ${!isValid1_16 ? 'readonly style="background:transparent;"' : ''}></td>
+                    <td><input type="text" id="f3-end-${d1_16}" placeholder="17:00" class="text-center entry-f3-c2" oninput="calculateTotals(); triggerAutoSave();" onblur="handleTimeBlur(this)" ${!isValid1_16 ? 'readonly style="background:transparent;"' : ''}></td>
+                    <td class="col-eval"><input type="text" id="f3-eval-${d1_16}" class="text-center font-medium bg-slate-50 text-[11px] eval-input" readonly ${!isValid1_16 ? 'style="background:transparent;"' : ''}></td>
+                    <td colspan="2" class="text-center font-bold bg-slate-100 text-[11px]">合計</td>
+                    <td><input type="text" id="f3-col-total-1" class="text-center font-bold bg-slate-50 text-xs" readonly placeholder=""></td>
+                    <td><input type="text" id="f3-col-total-2" class="text-center font-bold bg-slate-50 text-xs" readonly placeholder=""></td>
+                    <td class="col-eval"><input type="text" id="grand-total-eval" class="text-center font-bold bg-slate-50 text-xs" readonly placeholder=""></td>
+                `;
+            } else if (format === 4) {
+                tr16.innerHTML = `
+                    <td class="text-center font-bold bg-slate-50 text-[10px] col-day">${isValid1_16 ? d1_16 : ''}</td>
+                    <td class="text-center text-[10px] col-wday"><input type="text" class="text-center" value="${w1_16}" ${!isValid1_16 ? 'readonly style="background:transparent;"' : ''}></td>
+                    <td><input type="text" id="f4-s1-${d1_16}" placeholder="09:00" class="text-center entry-f4-c1 text-xs" oninput="calculateTotals(); triggerAutoSave();" onblur="handleTimeBlur(this)" ${!isValid1_16 ? 'readonly style="background:transparent;"' : ''}></td>
+                    <td><input type="text" id="f4-e1-${d1_16}" placeholder="12:00" class="text-center entry-f4-c2 text-xs" oninput="calculateTotals(); triggerAutoSave();" onblur="handleTimeBlur(this)" ${!isValid1_16 ? 'readonly style="background:transparent;"' : ''}></td>
+                    <td><input type="text" id="f4-s2-${d1_16}" placeholder="13:00" class="text-center entry-f4-c3 text-xs" oninput="calculateTotals(); triggerAutoSave();" onblur="handleTimeBlur(this)" ${!isValid1_16 ? 'readonly style="background:transparent;"' : ''}></td>
+                    <td><input type="text" id="f4-e2-${d1_16}" placeholder="17:00" class="text-center entry-f4-c4 text-xs" oninput="calculateTotals(); triggerAutoSave();" onblur="handleTimeBlur(this)" ${!isValid1_16 ? 'readonly style="background:transparent;"' : ''}></td>
+                    <td class="col-eval"><input type="text" id="f4-eval-${d1_16}" class="text-center font-medium bg-slate-50 text-[10px] eval-input" readonly ${!isValid1_16 ? 'style="background:transparent;"' : ''}></td>
+                    <td colspan="2" class="text-center font-bold bg-slate-100 text-[10px]">合計</td>
+                    <td><input type="text" id="f4-col-total-1" class="text-center font-bold bg-slate-50 text-[11px]" readonly placeholder=""></td>
+                    <td><input type="text" id="f4-col-total-2" class="text-center font-bold bg-slate-50 text-[11px]" readonly placeholder=""></td>
+                    <td><input type="text" id="f4-col-total-3" class="text-center font-bold bg-slate-50 text-[11px]" readonly placeholder=""></td>
+                    <td><input type="text" id="f4-col-total-4" class="text-center font-bold bg-slate-50 text-[11px]" readonly placeholder=""></td>
+                    <td class="col-eval"><input type="text" id="grand-total-eval" class="text-center font-bold bg-slate-50 text-[11px]" readonly placeholder=""></td>
+                `;
+            }
+
+            calculateTotals();
+        }
+
+        // ロックチェックボックス変更時の処理
+        function toggleLockState() {
+            applyLockStateToElements();
+            triggerAutoSave();
+        }
+
+        function applyLockStateToElements() {
+            const isLocked = document.getElementById('is-locked-checkbox').checked;
+            // 表ヘッダーおよび配分金の単位・項目名入力欄（locked-targetクラス）
+            const lockedTargets = document.querySelectorAll('.locked-target, #table-header-row input, #table-header-row select');
+            lockedTargets.forEach(el => {
+                if (isLocked) {
+                    if (el.tagName === 'SELECT') {
+                        el.disabled = true;
+                    } else {
+                        el.setAttribute('readonly', 'true');
+                    }
+                    el.classList.add('bg-slate-100', 'cursor-not-allowed');
+                } else {
+                    if (el.tagName === 'SELECT') {
+                        el.disabled = false;
+                    } else {
+                        el.removeAttribute('readonly');
+                    }
+                    el.classList.remove('bg-slate-100', 'cursor-not-allowed');
+                }
+            });
+        }
+
+        // データの収集（エクスポート・保存用）
+        function collectFormData() {
+            const data = {
+                format: document.getElementById('report-format').value,
+                year: document.getElementById('report-year').value,
+                month: document.getElementById('report-month').value,
+                isLocked: document.getElementById('is-locked-checkbox').checked,
+                workContentMemo: document.getElementById('work-content-memo').value,
+                contractTitle: document.getElementById('contract-title').value,
+                contractNo: document.getElementById('contract-no').value,
+                clientName: document.getElementById('client-name').value,
+                memberNo: document.getElementById('member-no').value,
+                memberName: document.getElementById('member-name').value,
+                secretariatMemo: document.getElementById('secretariat-memo').value,
+                itemNames: {},
+                financials: {},
+                inputs: {}
+            };
+
+            // 項目名の保存
+            for (let i = 1; i <= 7; i++) {
+                const el = document.getElementById(`item-name-${i}`);
+                if (el) data.itemNames[`item-name-${i}`] = el.value;
+            }
+
+            // 金額系入力欄の保存
+            ['p1-price', 'p2-price', 'p3-price', 'item-deduction', 'item-advance', 'item-material', 'item-admin'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) data.financials[id] = el.value;
+            });
+
+            // カレンダー表内の全input/select要素の保存
+            const tableInputs = document.querySelectorAll('#report-table-el input, #report-table-el select');
+            tableInputs.forEach(el => {
+                if (el.id) {
+                    data.inputs[el.id] = el.value;
+                }
+            });
+
+            return data;
+        }
+
+        // データの復元
+        function restoreFormData(data) {
+            if (!data) return;
+
+            if (data.format) document.getElementById('report-format').value = data.format;
+            if (data.year) document.getElementById('report-year').value = data.year;
+            if (data.month) document.getElementById('report-month').value = data.month;
+            
+            // 様式や年月を反映してカレンダーを再構築
+            updateCalendar();
+
+            if (data.isLocked !== undefined) {
+                document.getElementById('is-locked-checkbox').checked = data.isLocked;
+            }
+            if (data.workContentMemo !== undefined) document.getElementById('work-content-memo').value = data.workContentMemo;
+            if (data.contractTitle !== undefined) document.getElementById('contract-title').value = data.contractTitle;
+            if (data.contractNo !== undefined) document.getElementById('contract-no').value = data.contractNo;
+            if (data.clientName !== undefined) document.getElementById('client-name').value = data.clientName;
+            if (data.memberNo !== undefined) document.getElementById('member-no').value = data.memberNo;
+            if (data.memberName !== undefined) document.getElementById('member-name').value = data.memberName;
+            if (data.secretariatMemo !== undefined) document.getElementById('secretariat-memo').value = data.secretariatMemo;
+
+            if (data.itemNames) {
+                for (const [id, val] of Object.entries(data.itemNames)) {
+                    const el = document.getElementById(id);
+                    if (el) el.value = val;
+                }
+            }
+
+            if (data.financials) {
+                for (const [id, val] of Object.entries(data.financials)) {
+                    const el = document.getElementById(id);
+                    if (el) el.value = val;
+                }
+            }
+
+            if (data.inputs) {
+                for (const [id, val] of Object.entries(data.inputs)) {
+                    const el = document.getElementById(id);
+                    if (el) el.value = val;
+                }
+            }
+
+            applyLockStateToElements();
+            calculateTotals();
+        }
+
+        // LocalStorageへの保存（履歴配列管理）
+        const LS_CURRENT_KEY = 'machida_sjc_current_report';
+        const LS_HISTORY_KEYS_LIST = 'machida_sjc_report_history_keys';
+
+        function saveToLocalStorage(notify = false) {
+            const data = collectFormData();
+            const contractNo = data.contractNo || 'default';
+            const month = data.month || '1';
+            const uniqueKey = `report_${contractNo}_${data.year}_${month}_${Date.now()}`;
+
+            localStorage.setItem(LS_CURRENT_KEY, JSON.stringify(data));
+            
+            // 履歴管理キーの更新
+            let historyKeys = JSON.parse(localStorage.getItem(LS_HISTORY_KEYS_LIST) || '[]');
+            // 最新を保持しつつ重複や古すぎるものを調整 (最大20件)
+            const baseKeyPrefix = `report_${contractNo}_${data.year}_${month}_`;
+            historyKeys = historyKeys.filter(k => !k.startsWith(baseKeyPrefix));
+            historyKeys.unshift(uniqueKey);
+            if (historyKeys.length > 20) historyKeys = historyKeys.slice(0, 20);
+
+            localStorage.setItem(LS_HISTORY_KEYS_LIST, JSON.stringify(historyKeys));
+            localStorage.setItem(uniqueKey, JSON.stringify(data));
+
+            if (notify) {
+                alert('ブラウザに一時保存しました。');
+            }
+        }
+
+        function saveToLocalStorageManually() {
+            saveToLocalStorage(true);
+        }
+
+        function loadFromLocalStorage() {
+            const raw = localStorage.getItem(LS_CURRENT_KEY);
+            if (raw) {
+                try {
+                    const data = JSON.parse(raw);
+                    restoreFormData(data);
+                } catch (e) {
+                    console.error('LocalStorage load error:', e);
+                }
+            }
+        }
+
+        function clearLocalStorageAndReload() {
+            if (confirm('入力データをクリアしてリロードしますか？')) {
+                localStorage.removeItem(LS_CURRENT_KEY);
+                location.reload();
+            }
+        }
+
+        // JSONファイルのエクスポート
+        function exportJSONFile() {
+            const data = collectFormData();
+            const contractNo = data.contractNo || '2601000';
+            const month = data.month || '9';
+            const filename = `就業報告書${contractNo}_${month}月.json`;
+
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // JSONファイルのインポート（複数ファイル対応 & localID.json 自動検出）
+        async function importJSONFiles(event) {
+            const files = event.target.files;
+            if (!files || files.length === 0) return;
+
+            let loadedReportData = null;
+            let localIdFoundMessage = "localID.json は検知されませんでした。";
+            let memberNoOverride = null;
+            let memberNameOverride = null;
+
+            for (let file of files) {
+                try {
+                    const text = await file.text();
+                    const json = JSON.parse(text);
+
+                    if (file.name === 'localID.json' || json.memberNo !== undefined && json.memberName !== undefined && json.format === undefined) {
+                        // localID.json の特徴を持つファイル
+                        memberNoOverride = json.memberNo;
+                        memberNameOverride = json.memberName;
+                        localIdFoundMessage = "localID.json を正常に読み込み、会員情報を上書きしました！";
+                    } else {
+                        // 就業報告書データ本体とみなす
+                        loadedReportData = json;
+                    }
+                } catch (e) {
+                    console.error('JSON parse error:', e);
+                }
+            }
+
+            if (!loadedReportData) {
+                // もし単一の localID.json のみが読み込まれた場合などは現在のフォームに適用
+                if (memberNoOverride && memberNameOverride) {
+                    document.getElementById('member-no').value = memberNoOverride;
+                    document.getElementById('member-name').value = memberNameOverride;
+                    alert(`結果: ${localIdFoundMessage}`);
+                    triggerAutoSave();
+                    event.target.value = '';
+                    return;
+                }
+                alert('有効な就業報告書のJSONデータが見つかりませんでした。');
+                event.target.value = '';
+                return;
+            }
+
+            // 会員情報の上書き適用
+            if (memberNoOverride) loadedReportData.memberNo = memberNoOverride;
+            if (memberNameOverride) loadedReportData.memberName = memberNameOverride;
+
+            restoreFormData(loadedReportData);
+            alert(`JSONファイルのインポートに成功しました。\n結果: ${localIdFoundMessage}`);
+            event.target.value = '';
+            triggerAutoSave();
+        }
+
+        // PDF保存 (html2pdf.js)
+        function saveAsPDF() {
+            const element = document.getElementById('report-print-area');
+            const contractNo = document.getElementById('contract-no').value || '2601000';
+            const month = document.getElementById('report-month').value || '9';
+            const opt = {
+                margin:       [4, 4, 4, 4],
+                filename:     `就業報告書${contractNo}_${month}月.pdf`,
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2, useCORS: true, logging: false },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+
+            html2pdf().set(opt).from(element).save();
+        }
+
+        // メール送信 (mailto:)
+        function sendEmailReport() {
+            const memberNo = document.getElementById('member-no').value.trim();
+            const memberName = document.getElementById('member-name').value.trim();
+            if (!memberNo || !memberName) {
+                alert('メール送信の前に「会員番号」と「会員氏名」を入力してください。');
+                return;
+            }
+
+            const year = document.getElementById('report-year').value;
+            const month = document.getElementById('report-month').value;
+            const format = document.getElementById('report-format').value;
+            const contractNo = document.getElementById('contract-no').value;
+            const grandTotal = document.getElementById('grand-total-amount').value || '0';
+            const grandEval = document.getElementById('grand-total-eval').value || '0';
+
+            const to = 'houkoku@machida-sjc.or.jp';
+            const sender = `${memberNo} ${memberName}`;
+            const subject = `【就業報告書】 ${year}年${month}月分 (${sender})`;
+            
+            const body = 
+`公益社団法人 町田市シルバー人材センター 宛
+
+以下の通り、就業報告書の内容を送信いたします。
+
+----------------------------------
+■ 会員情報: ${sender}
+■ 対象年月: ${year}年 ${month}月分
+■ 契約番号: ${contractNo}
+■ 様式番号: 様式${format}
+■ 実績合計: ${grandEval}
+■ 請求合計: ${grandTotal} 円
+----------------------------------
+
+※本メールはクライアントサイド・システムから送信されています。PDFファイルが保存されている場合は、必要に応じてメールに添付してください。`;
+
+            const mailtoUrl = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+            window.location.href = mailtoUrl;
+        }
+
+        // 提出履歴・管理モーダル
+        function openHistoryModal() {
+            const container = document.getElementById('history-list-container');
+            container.innerHTML = '';
+
+            const historyKeys = JSON.parse(localStorage.getItem(LS_HISTORY_KEYS_LIST) || '[]');
+            if (historyKeys.length === 0) {
+                container.innerHTML = '<p class="text-xs text-slate-500 text-center py-4">保存された履歴はありません。</p>';
+            } else {
+                historyKeys.forEach(key => {
+                    const rawData = localStorage.getItem(key);
+                    if (!rawData) return;
+                    try {
+                        const data = JSON.parse(rawData);
+                        const div = document.createElement('div');
+                        div.className = 'flex items-center justify-between p-2.5 bg-slate-50 hover:bg-slate-100 rounded border border-slate-200 text-xs';
+                        div.innerHTML = `
+                            <div>
+                                <span class="font-bold text-slate-800">${data.year}年${data.month}月分</span> 
+                                <span class="text-slate-600 ml-2">契約番号: ${data.contractNo || '未設定'}</span>
+                                <span class="text-slate-500 ml-2">(${data.memberName || '名前なし'})</span>
+                            </div>
+                            <div class="space-x-2">
+                                <button onclick="loadHistoryItem('${key}')" class="bg-blue-600 text-white px-2.5 py-1 rounded hover:bg-blue-700">呼出</button>
+                                <button onclick="deleteHistoryItem('${key}')" class="bg-rose-100 text-rose-700 px-2.5 py-1 rounded hover:bg-rose-200">削除</button>
+                            </div>
+                        `;
+                        container.appendChild(div);
+                    } catch (e) {
+                        console.error(e);
+                    }
+                });
+            }
+
+            document.getElementById('history-modal').classList.remove('hidden');
+        }
+
+        function closeHistoryModal() {
+            document.getElementById('history-modal').classList.add('hidden');
+        }
+
+        function loadHistoryItem(key) {
+            const raw = localStorage.getItem(key);
+            if (raw) {
+                const data = JSON.parse(raw);
+                restoreFormData(data);
+                localStorage.setItem(LS_CURRENT_KEY, raw);
+                alert('選択した報告書データを読み込みました。');
+                closeHistoryModal();
+            }
+        }
+
+        function deleteHistoryItem(key) {
+            if (confirm('この履歴データを削除しますか？')) {
+                localStorage.removeItem(key);
+                let historyKeys = JSON.parse(localStorage.getItem(LS_HISTORY_KEYS_LIST) || '[]');
+                historyKeys = historyKeys.filter(k => k !== key);
+                localStorage.setItem(LS_HISTORY_KEYS_LIST, JSON.stringify(historyKeys));
+                openHistoryModal();
+            }
+        }
+
+        // ==========================================
+        // 音声入力機能 (Web Speech API) 3モード実装
+        // ==========================================
+        function initSpeechRecognition() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                console.warn('Web Speech API is not supported in this browser.');
+                return;
+            }
+
+            recognition = new SpeechRecognition();
+            recognition.lang = 'ja-JP';
+            recognition.interimResults = false;
+            recognition.maxAlternatives = 1;
+
+            recognition.onstart = () => {
+                isListening = true;
+                document.getElementById('voice-status').classList.remove('hidden');
+                document.getElementById('voice-btn').classList.replace('bg-emerald-600', 'bg-rose-600');
+                document.getElementById('voice-btn-text').textContent = '音声認識中...';
+            };
+
+            recognition.onend = () => {
+                isListening = false;
+                document.getElementById('voice-status').classList.add('hidden');
+                document.getElementById('voice-btn').classList.replace('bg-rose-600', 'bg-emerald-600');
+                document.getElementById('voice-btn-text').textContent = '音声入力';
+            };
+
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                processVoiceCommand(transcript);
+            };
+
+            recognition.onerror = (event) => {
+                console.error('Speech recognition error:', event.error);
+                isListening = false;
+                document.getElementById('voice-status').classList.add('hidden');
+                document.getElementById('voice-btn').classList.replace('bg-rose-600', 'bg-emerald-600');
+                document.getElementById('voice-btn-text').textContent = '音声入力';
+            };
+        }
+
+        function toggleVoiceInput() {
+            if (!recognition) {
+                alert('お使いのブラウザは音声認識に対応していません。Google Chrome等をご利用ください。');
+                return;
+            }
+            if (isListening) {
+                recognition.stop();
+            } else {
+                focusedInputBeforeVoice = document.activeElement;
+                try {
+                    recognition.start();
+                } catch (e) {
+                    console.error(e);
+                }
+            }
+        }
+
+        // 音声解析ロジック（モードA / モードB / モードC）
+        function processVoiceCommand(text) {
+            console.log('音声認識結果:', text);
+
+            // モードA判定：特定の「開始時間」または「終了時間」のinputにカーソルがある場合
+            const activeEl = focusedInputBeforeVoice;
+            const isTimeInput = activeEl && activeEl.tagName === 'INPUT' && (
+                activeEl.id.includes('start') || activeEl.id.includes('end') || activeEl.id.includes('s1') || activeEl.id.includes('e1') || activeEl.id.includes('s2') || activeEl.id.includes('e2')
+            );
+
+            if (isTimeInput) {
+                const parsedTime = parseSpokenTime(text);
+                if (parsedTime) {
+                    activeEl.value = parsedTime;
+                    activeEl.dispatchEvent(new Event('input'));
+                    activeEl.dispatchEvent(new Event('blur'));
+                    triggerAutoSave();
+                    return;
+                }
+            }
+
+            // モードB判定：日付指定一括入力（例：「15日 9時 17時」「15日のデータ消して」など）
+            const dayMatch = text.match(/(\d{1,2})日/);
+            if (dayMatch) {
+                const dayNum = parseInt(dayMatch[1], 10);
+                if (dayNum >= 1 && dayNum <= 31) {
+                    // 消去コマンドのチェック
+                    if (text.includes('消す') || text.includes('クリア') || text.includes('削除')) {
+                        clearDayData(dayNum);
+                        alert(`${dayNum}日のデータをクリアしました。`);
+                        triggerAutoSave();
+                        return;
+                    }
+
+                    // 時間の抽出
+                    const times = extractAllTimes(text);
+                    if (times.length >= 2) {
+                        setDayTimeData(dayNum, times[0], times[1]);
+                        alert(`${dayNum}日に 開始:${times[0]} 終了:${times[1]} を設定しました。`);
+                        triggerAutoSave();
+                        return;
+                    } else if (times.length === 1) {
+                        setDayTimeData(dayNum, times[0], null);
+                        alert(`${dayNum}日に 開始:${times[0]} を設定しました。`);
+                        triggerAutoSave();
+                        return;
+                    }
+                }
+            }
+
+            // モードC判定：作業内容追記（日付が含まれない場合など）
+            const memoArea = document.getElementById('work-content-memo');
+            if (memoArea) {
+                const currentVal = memoArea.value;
+                memoArea.value = currentVal ? `${currentVal}\n${text}` : text;
+                memoArea.dispatchEvent(new Event('input'));
+                alert(`作業内容欄に追記しました: "${text}"`);
+                triggerAutoSave();
+            }
+        }
+
+        // 音声発話テキストから時刻を解析（モードAのルール対応）
+        function parseSpokenTime(text) {
+            // 例: "9時", "午後3時半", "正午", "15時30分"
+            if (text.includes('正午')) return '12:00';
+
+            let hours = null;
+            let minutes = 0;
+
+            const hMatch = text.match(/(\d{1,2})時/);
+            if (hMatch) {
+                hours = parseInt(hMatch[1], 10);
+            } else {
+                // 数字のみの場合
+                const numMatch = text.match(/(\d{1,4})/);
+                if (numMatch && text.length <= 4) {
+                    const val = numMatch[1];
+                    if (val.length <= 2) hours = parseInt(val, 10);
+                    else if (val.length === 3) {
+                        hours = parseInt(val.substring(0, 1), 10);
+                        minutes = parseInt(val.substring(1), 10);
+                    } else if (val.length === 4) {
+                        hours = parseInt(val.substring(0, 2), 10);
+                        minutes = parseInt(val.substring(2), 10);
+                    }
+                }
+            }
+
+            if (hours === null) return null;
+
+            // 「半」の処理
+            if (text.includes('半')) {
+                minutes = 30;
+            } else {
+                const mMatch = text.match(/(\d{1,2})分/);
+                if (mMatch) minutes = parseInt(mMatch[1], 10);
+            }
+
+            // 「午後」「夕方」「夜」のキーワードがあれば+12時間
+            let isPM = text.includes('午後') || text.includes('夕方') || text.includes('夜') || text.includes('晩');
+            if (isPM && hours < 12) {
+                hours += 12;
+            }
+
+            // 1時台から6時台まで（かつ午前と明示されていない場合）は午後（+12時間）として処理するルール
+            if (!text.includes('午前') && hours >= 1 && hours <= 6) {
+                hours += 12;
+            }
+
+            if (hours > 23) hours = 23;
+            if (minutes > 59) minutes = 59;
+
+            return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+        }
+
+        // テキスト内から複数の時刻表現を抽出するヘルパー
+        function extractAllTimes(text) {
+            // 単純な「XX時YY分」や「XX時」のパターンを複数抽出
+            const matches = text.matchAll(/((?:午後|午前)?\d{1,2}時(?:半|\d{1,2}分)?|\d{1,4})/g);
+            const results = [];
+            for (const m of matches) {
+                const parsed = parseSpokenTime(m[0]);
+                if (parsed) results.push(parsed);
+            }
+            return results;
+        }
+
+        function setDayTimeData(day, startTime, endTime) {
+            const format = parseInt(document.getElementById('report-format').value);
+            if (format === 3) {
+                const startEl = document.getElementById(`f3-start-${day}`);
+                const endEl = document.getElementById(`f3-end-${day}`);
+                if (startEl && startTime) {
+                    startEl.value = startTime;
+                    startEl.dispatchEvent(new Event('input'));
+                }
+                if (endEl && endTime) {
+                    endEl.value = endTime;
+                    endEl.dispatchEvent(new Event('input'));
+                }
+            } else if (format === 4) {
+                const s1El = document.getElementById(`f4-s1-${day}`);
+                if (s1El && startTime) {
+                    s1El.value = startTime;
+                    s1El.dispatchEvent(new Event('input'));
+                }
+                const e1El = document.getElementById(`f4-e1-${day}`);
+                if (e1El && endTime) {
+                    e1El.value = endTime;
+                    e1El.dispatchEvent(new Event('input'));
+                }
+            } else if (format === 1) {
+                const textEl = document.getElementById(`f1-text-${day}`);
+                if (textEl) {
+                    textEl.value = `開始 ${startTime || ''} 終了 ${endTime || ''}`;
+                    textEl.dispatchEvent(new Event('input'));
+                }
+            }
+            calculateTotals();
+        }
+
+        function clearDayData(day) {
+            const format = parseInt(document.getElementById('report-format').value);
+            if (format === 3) {
+                const startEl = document.getElementById(`f3-start-${day}`);
+                const endEl = document.getElementById(`f3-end-${day}`);
+                if (startEl) { startEl.value = ''; startEl.dispatchEvent(new Event('input')); }
+                if (endEl) { endEl.value = ''; endEl.dispatchEvent(new Event('input')); }
+            } else if (format === 4) {
+                ['s1', 'e1', 's2', 'e2'].forEach(k => {
+                    const el = document.getElementById(`f4-${k}-${day}`);
+                    if (el) { el.value = ''; el.dispatchEvent(new Event('input')); }
+                });
+            } else if (format === 1) {
+                const textEl = document.getElementById(`f1-text-${day}`);
+                const evalEl = document.getElementById(`f1-eval-${day}`);
+                if (textEl) { textEl.value = ''; textEl.dispatchEvent(new Event('input')); }
+                if (evalEl) { evalEl.value = ''; evalEl.dispatchEvent(new Event('input')); }
+            } else if (format === 2) {
+                const n1 = document.getElementById(`f2-n1-${day}`);
+                const n2 = document.getElementById(`f2-n2-${day}`);
+                if (n1) { n1.value = ''; n1.dispatchEvent(new Event('input')); }
+                if (n2) { n2.value = ''; n2.dispatchEvent(new Event('input')); }
+            }
+            calculateTotals();
+        }
+    </script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+            // 'service-worker.js' を登録 (index.htmlからの相対パス)
+            navigator.serviceWorker.register('service-worker.js')
+              .then((registration) => {
+                console.log('Service Worker registered successfully:', registration.scope);
+              })
+              .catch((error) => {
+                console.log('Service Worker registration failed:', error);
+              });
+          });
+        }
+    </script>
+</body>
+</html>
