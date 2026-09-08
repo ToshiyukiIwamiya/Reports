@@ -63,6 +63,12 @@
                 height: 24px !important;
                 font-size: 12px !important;
             }
+            /* 値が空のinputやtextareaのプレースホルダーを透明にする */
+            input:placeholder-shown,
+            textarea:placeholder-shown {
+                color: transparent !important;
+                -webkit-text-fill-color: transparent !important; /* Safari/Chrome対策 */
+            }
         }
         input, textarea, select {
             background-color: transparent;
@@ -748,28 +754,28 @@
                         }
                     }
                 }
-
-                for (let colIdx = 1; colIdx <= 2; colIdx++) {
-                    let totalMinutes = 0;
-                    let hasTime = false;
-                    document.querySelectorAll(`.entry-f3-c${colIdx}`).forEach(input => {
-                        const parsed = parseTimeToMinutes(input.value);
-                        if (parsed) {
-                            totalMinutes += parsed.minutes;
-                            hasTime = true;
-                        }
-                    });
-                    const totalField = document.getElementById(`f3-col-total-${colIdx}`);
-                    if (totalField) {
-                        if (hasTime) {
-                            const th = Math.floor(totalMinutes / 60);
-                            const tm = totalMinutes % 60;
-                            totalField.value = `${th}:${tm.toString().padStart(2, '0')}`;
-                        } else {
-                            totalField.value = '';
-                        }
-                    }
-                }
+//
+//                for (let colIdx = 1; colIdx <= 2; colIdx++) {
+//                    let totalMinutes = 0;
+//                    let hasTime = false;
+//                    document.querySelectorAll(`.entry-f3-c${colIdx}`).forEach(input => {
+//                        const parsed = parseTimeToMinutes(input.value);
+//                        if (parsed) {
+//                            totalMinutes += parsed.minutes;
+//                            hasTime = true;
+//                        }
+//                    });
+//                    const totalField = document.getElementById(`f3-col-total-${colIdx}`);
+//                    if (totalField) {
+//                        if (hasTime) {
+//                            const th = Math.floor(totalMinutes / 60);
+//                            const tm = totalMinutes % 60;
+//                            totalField.value = `${th}:${tm.toString().padStart(2, '0')}`;
+//                        } else {
+//                            totalField.value = '';
+//                        }
+//                    }
+//                }
             } else if (format === 4) {
                 const evalTypeEl = document.getElementById('f4-eval-type-1');
                 const evalType = evalTypeEl ? evalTypeEl.value : '時間';
@@ -820,28 +826,28 @@
                         }
                     }
                 }
-
-                for (let colIdx = 1; colIdx <= 4; colIdx++) {
-                    let totalMinutes = 0;
-                    let hasTime = false;
-                    document.querySelectorAll(`.entry-f4-c${colIdx}`).forEach(input => {
-                        const parsed = parseTimeToMinutes(input.value);
-                        if (parsed) {
-                            totalMinutes += parsed.minutes;
-                            hasTime = true;
-                        }
-                    });
-                    const totalField = document.getElementById(`f4-col-total-${colIdx}`);
-                    if (totalField) {
-                        if (hasTime) {
-                            const th = Math.floor(totalMinutes / 60);
-                            const tm = totalMinutes % 60;
-                            totalField.value = `${th}:${tm.toString().padStart(2, '0')}`;
-                        } else {
-                            totalField.value = '';
-                        }
-                    }
-                }
+//
+//                for (let colIdx = 1; colIdx <= 4; colIdx++) {
+//                    let totalMinutes = 0;
+//                    let hasTime = false;
+//                    document.querySelectorAll(`.entry-f4-c${colIdx}`).forEach(input => {
+//                        const parsed = parseTimeToMinutes(input.value);
+//                        if (parsed) {
+//                            totalMinutes += parsed.minutes;
+//                            hasTime = true;
+//                        }
+//                    });
+//                    const totalField = document.getElementById(`f4-col-total-${colIdx}`);
+//                    if (totalField) {
+//                        if (hasTime) {
+//                            const th = Math.floor(totalMinutes / 60);
+//                            const tm = totalMinutes % 60;
+//                            totalField.value = `${th}:${tm.toString().padStart(2, '0')}`;
+//                        } else {
+//                            totalField.value = '';
+//                        }
+//                    }
+//                }
             }
 
             const evalInputs = document.querySelectorAll('.eval-input');
@@ -1256,7 +1262,7 @@
             }
 
             // 金額系入力欄の保存
-            ['p1-price', 'p2-price', 'p3-price', 'item-deduction', 'item-advance', 'item-material', 'item-admin'].forEach(id => {
+            ['p1-price', 'p2-price', 'p3-price', 'p3-price', 'item-deduction', 'item-advance', 'item-material', 'item-admin'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) data.financials[id] = el.value;
             });
@@ -1444,9 +1450,20 @@
 
         // PDF保存 (html2pdf.js)
         function saveAsPDF() {
-            const element = document.getElementById('report-print-area');
+            const element = document.getElementById('report-print-area'); // ※もしHTML側に id="report-print-area" を追加していない場合は document.querySelector('.print-container') 
             const contractNo = document.getElementById('contract-no').value || '2601000';
             const month = document.getElementById('report-month').value || '9';
+        
+            // 1. 中身が空のinput/textareaからplaceholderを一時的に退避・削除する
+            const inputs = element.querySelectorAll('input, textarea');
+            const placeholders = [];
+            inputs.forEach((input, index) => {
+                placeholders[index] = input.getAttribute('placeholder');
+                if (!input.value && placeholders[index]) {
+                    input.setAttribute('placeholder', '');
+                }
+            });
+        
             const opt = {
                 margin:       [4, 4, 4, 4],
                 filename:     `就業報告書${contractNo}_${month}月.pdf`,
@@ -1454,8 +1471,22 @@
                 html2canvas:  { scale: 2, useCORS: true, logging: false },
                 jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
             };
-
-            html2pdf().set(opt).from(element).save();
+        
+            // 2. PDF化を実行し、完了後（または失敗時）にplaceholderを元に戻す
+            html2pdf().set(opt).from(element).save().then(() => {
+                inputs.forEach((input, index) => {
+                    if (placeholders[index]) {
+                        input.setAttribute('placeholder', placeholders[index]);
+                    }
+                });
+            }).catch((err) => {
+                console.error('PDF save error:', err);
+                inputs.forEach((input, index) => {
+                    if (placeholders[index]) {
+                        input.setAttribute('placeholder', placeholders[index]);
+                    }
+                });
+            });
         }
 
         // メール送信 (mailto:)
