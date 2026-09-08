@@ -191,7 +191,7 @@
     <!-- 横幅が狭い端末でもレイアウトが潰れないスクロールラッパー -->
     <div class="w-full overflow-x-auto pb-6 print:pb-0 print-wrapper">
     <div id="report-print-area" class="print-container max-w-[192mm] min-w-[700px] mx-auto bg-white p-[8mm] shadow-lg box-border text-black font-sans relative flex flex-col justify-between" style="min-height: 282mm;">
-        
+
         <div class="flex justify-between items-end mb-2">
             <div class="flex items-center gap-3">
                 <h2 class="text-2xl font-black tracking-wider border-2 border-black px-3 py-1">就業報告書</h2>
@@ -290,7 +290,7 @@
 
                 <div class="main-border p-1.5 text-xs space-y-1 print:space-y-0.5 bg-white">
                     <div class="font-bold text-[12px] border-b border-black pb-0.5 mb-0.5">配分金</div>
-                    
+
                     <div class="flex items-center justify-between">
                         <input type="text" id="item-name-1" maxlength="10" class="border-b border-gray-400 w-24 text-left shrink font-medium text-xs" value="時間" placeholder="項目名(10文字)" oninput="syncAllocationNames(); triggerAutoSave();">
                         <div class="flex items-center gap-1">
@@ -302,7 +302,7 @@
                             <span class="shrink-0 text-xs w-4 text-left">円</span>
                         </div>
                     </div>
-                    
+
                     <div class="flex items-center justify-between" id="row-allocation-2">
                         <input type="text" id="item-name-2" maxlength="10" class="border-b border-gray-400 w-24 text-left shrink font-medium text-xs" value="数値2" placeholder="項目名(10文字)" oninput="syncAllocationNames(); triggerAutoSave();">
                         <div class="flex items-center gap-1">
@@ -415,7 +415,7 @@
         function initReport() {
             const yearSelect = document.getElementById('report-year');
             const monthSelect = document.getElementById('report-month');
-            
+
             const currentYear = new Date().getFullYear();
             const currentMonth = new Date().getMonth() + 1;
 
@@ -542,7 +542,7 @@
         function syncAllocationNames() {
             const format = parseInt(document.getElementById('report-format').value);
             const itemName1 = document.getElementById('item-name-1').value || '';
-            
+
             if (format === 1) {
                 const selectOptions = ['日数', '件数', '日当'];
                 const matchedOption = selectOptions.includes(itemName1) ? itemName1 : '日数';
@@ -654,13 +654,13 @@
 
         function calculateTotals() {
             const format = parseInt(document.getElementById('report-format').value);
-            
+
             if (format === 1) {
                 const evalType = document.getElementById('f1-eval-type-1') ? document.getElementById('f1-eval-type-1').value : '日数';
                 for (let i = 1; i <= 31; i++) {
                     const textInput = document.getElementById(`f1-text-${i}`);
                     const evalField = document.getElementById(`f1-eval-${i}`);
-                    
+
                     if (textInput && evalField) {
                         const hasText = textInput.value.trim() !== '';
                         if (hasText) {
@@ -681,13 +681,13 @@
                     const rowN1 = document.getElementById(`f2-n1-${i}`);
                     const rowN2 = document.getElementById(`f2-n2-${i}`);
                     const evalField = document.getElementById(`f2-eval-${i}`);
-                    
+
                     if (rowN1 && rowN2 && evalField) {
                         const v1 = parseNum(rowN1.value);
                         const v2 = parseNum(rowN2.value);
                         const has1 = rowN1.value.trim() !== '';
                         const has2 = rowN2.value.trim() !== '';
-                        
+
                         if (has1 || has2) {
                             evalField.value = formatNumber(v1 + v2);
                         } else {
@@ -719,7 +719,7 @@
             } else if (format === 3) {
                 const evalTypeEl = document.getElementById('f3-eval-type-1');
                 const evalType = evalTypeEl ? evalTypeEl.value : '時間';
-                
+
                 for (let i = 1; i <= 31; i++) {
                     const startInput = document.getElementById(`f3-start-${i}`);
                     const endInput = document.getElementById(`f3-end-${i}`);
@@ -733,7 +733,7 @@
                             if (sParsed && eParsed) {
                                 let diffMin = eParsed.minutes - sParsed.minutes;
                                 if (diffMin < 0) diffMin += 24 * 60;
-                                
+
                                 let hours = diffMin / 60;
                                 if (hours > 8) {
                                     hours -= 1.0;
@@ -1076,7 +1076,7 @@
                 const d1 = i;
                 const isValid1 = d1 <= daysInMonth;
                 const w1 = isValid1 ? weekdays[new Date(year, month - 1, d1).getDay()] : '';
-                
+
                 const d2 = i2 <= daysInMonth ? i2 : null;
                 const isValid2 = d2 !== null;
                 const w2 = isValid2 ? weekdays[new Date(year, month - 1, d2).getDay()] : '';
@@ -1262,7 +1262,7 @@
             }
 
             // 金額系入力欄の保存
-            ['p1-price', 'p2-price', 'p3-price', 'p3-price', 'item-deduction', 'item-advance', 'item-material', 'item-admin'].forEach(id => {
+            ['p1-price', 'p2-price', 'p3-price', 'p3-count', 'item-deduction', 'item-advance', 'item-material', 'item-admin'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) data.financials[id] = el.value;
             });
@@ -1285,7 +1285,7 @@
             if (data.format) document.getElementById('report-format').value = data.format;
             if (data.year) document.getElementById('report-year').value = data.year;
             if (data.month) document.getElementById('report-month').value = data.month;
-            
+
             // 様式や年月を反映してカレンダーを再構築
             updateCalendar();
 
@@ -1336,7 +1336,7 @@
             const uniqueKey = `report_${contractNo}_${data.year}_${month}_${Date.now()}`;
 
             localStorage.setItem(LS_CURRENT_KEY, JSON.stringify(data));
-            
+
             // 履歴管理キーの更新
             let historyKeys = JSON.parse(localStorage.getItem(LS_HISTORY_KEYS_LIST) || '[]');
             // 最新を保持しつつ重複や古すぎるものを調整 (最大20件)
@@ -1463,8 +1463,14 @@
         function saveAsPDF() {
             const element = document.getElementById('report-print-area'); // ※もしHTML側に id="report-print-area" を追加していない場合は document.querySelector('.print-container') 
             const contractNo = document.getElementById('contract-no').value || '2601000';
+            const memberNo = document.getElementById('member-no').value.trim();
+            const memberName = document.getElementById('member-name').value.trim();
+            if (!memberNo || !memberName) {
+                alert('PDF保存の前に「会員番号」と「会員氏名」を入力してください。');
+                return;
+            }
             const month = document.getElementById('report-month').value || '9';
-        
+
             // 1. 中身が空のinput/textareaからplaceholderを一時的に退避・削除する
             const inputs = element.querySelectorAll('input, textarea');
             const placeholders = [];
@@ -1474,15 +1480,15 @@
                     input.setAttribute('placeholder', '');
                 }
             });
-        
+
             const opt = {
                 margin:       [4, 4, 4, 4],
-                filename:     `就業報告書${contractNo}_${month}月.pdf`,
+                filename:     `就業報告書${contractNo}_${month}月(memberNo).pdf`,
                 image:        { type: 'jpeg', quality: 0.98 },
                 html2canvas:  { scale: 2, useCORS: true, logging: false },
                 jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
             };
-        
+
             // 2. PDF化を実行し、完了後（または失敗時）にplaceholderを元に戻す
             html2pdf().set(opt).from(element).save().then(() => {
                 inputs.forEach((input, index) => {
@@ -1519,7 +1525,7 @@
             const to = 'houkoku@machida-sjc.or.jp';
             const sender = `${memberNo} ${memberName}`;
             const subject = `【就業報告書】 ${year}年${month}月分 (${sender})`;
-            
+
             const body = 
 `公益社団法人 町田市シルバー人材センター 宛
 
@@ -1534,7 +1540,7 @@
 ■ 請求合計: ${grandTotal} 円
 ----------------------------------
 
-※本メールはクライアントサイド・システムから送信されています。PDFファイルが保存されている場合は、必要に応じてメールに添付してください。`;
+※保存したPDFファイルを添付してから送信してください。`;
 
             const mailtoUrl = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
             window.location.href = mailtoUrl;
